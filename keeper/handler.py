@@ -17,7 +17,7 @@ bp = Blueprint("handler", __name__, url_prefix="/api/v1")
 
 @bp.route("/react")
 def react():
-  vm_name = request.args.get('vm_name', '')
+  vm_name = request.args.get('vm_name', None)
   action = request.args.get('action', 'restore')
   if vm_name is None:
     return abort(400, "VM name is required.")
@@ -42,7 +42,7 @@ def react():
 
 @bp.route('/snapshot')
 def snapshot():
-  vm_name = request.args.get('vm_name', '')
+  vm_name = request.args.get('vm_name', None)
   if vm_name is None:
     return abort(400, "VM name is required.")
   try:
@@ -74,13 +74,13 @@ def exec_script(filepath, *args):
 
 @bp.route('/user_project', methods=['POST'])
 def add_user_project():
-  username = request.args.get('username', '')
+  username = request.args.get('username', None)
   if username is None:
     return abort(400, "Username is required.")
-  token = request.args.get('token', '')
+  token = request.args.get('token', None)
   if token is None:
     return abort(400, "Token is required.")
-  project_name = request.args.get('project_name', '')
+  project_name = request.args.get('project_name', None)
   if project_name is None:
     return abort(400, "Project name is required.")
   try:
@@ -92,15 +92,15 @@ def add_user_project():
 
 @bp.route('/register_runner', methods=['POST'])
 def register_runner():
-  username = request.args.get('username', '')
+  username = request.args.get('username', None)
   if username is None:
     return abort(400, "Username is required.")
-  project_name = request.args.get('project_name', '')
+  project_name = request.args.get('project_name', None)
   if project_name is None:
     return abort(400, "Project name is required.")
-  runner_tag = request.args.get('runner_tag', '')
-  if runner_tag is None:
-    return abort(400, "Runner tag is required.")
+  runner_name = request.args.get('runner_name', None)
+  if runner_name is None:
+    return abort(400, "Runner name is required.")
 
   data = request.get_json()
   if data is None:
@@ -119,7 +119,7 @@ def register_runner():
   vm = VM(data['vm_id'], data['vm_name'], data['target'], data['keeper_url'])
   snapshot = Snapshot(data['vm_id'], data['snapshot_name'])
   try:
-    KeeperManager.register_project_runner(username, project_name, runner_tag, vm, snapshot, current_app)
+    KeeperManager.register_project_runner(username, project_name, runner_name, vm, snapshot, current_app)
   except KeeperException as e:
     return abort(500, e)
   return jsonify(message="Successful register project runner.")
@@ -127,11 +127,11 @@ def register_runner():
 
 @bp.route('/unregister_runner', methods=['DELETE'])
 def unregister_runner():
-  runner_tag = request.args.get('runner_tag', '')
-  if runner_tag is None:
-    return abort(400, 'Runner tag is required.')
+  runner_name = request.args.get('runner_name', None)
+  if runner_name is None:
+    return abort(400, 'Runner name is required.')
   try:
-    KeeperManager.unregister_runner_by_tag(runner_tag, current_app)
+    KeeperManager.unregister_runner_by_name(runner_name, current_app)
   except KeeperException as e:
     return abort(500, e)
   return jsonify(message="Successful unregister project runner.")

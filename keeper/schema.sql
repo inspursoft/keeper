@@ -23,7 +23,7 @@ create table project (
 create table runner (
   id integer primary key autoincrement,
   runner_id integer unique not null,
-  runner_tag text not null
+  runner_name text not null
 );
 
 create table user_project (

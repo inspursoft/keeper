@@ -40,9 +40,9 @@ class Snapshot:
 
 
 class Runner:
-  __slots__ = 'runner_id', 'runner_tag'
-  def __init__(self, runner_tag):
-    self.runner_tag = runner_tag
+  __slots__ = 'runner_id', 'runner_name'
+  def __init__(self, runner_name):
+    self.runner_name = runner_name
 
   def __str__(self):
-    return "runner_id: %s, runner_tag: %s" % (self.runner_id, self.runner_tag)
+    return "runner_id: %s, runner_name: %s" % (self.runner_id, self.runner_name)

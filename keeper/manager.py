@@ -95,7 +95,7 @@ class KeeperManager:
 
 
   @staticmethod
-  def register_project_runner(username, project_name, runner_tag, vm, snapshot, app):
+  def register_project_runner(username, project_name, runner_name, vm, snapshot, app):
     r = db.get_user_token(project_name, username)
     if r is None:
       app.logger.error("User: %s does not exists." % username)
@@ -114,15 +114,15 @@ class KeeperManager:
     app.logger.debug("Obtained project: %s in project runner registration." % project)    
       
     runners = KeeperManager.get_gitlab_runners(project.project_id, r['token'], app)
-    runner = Runner(runner_tag)
+    runner = Runner(runner_name)
     found = False
     for e in runners:
-      if e['description'] == runner_tag:
+      if e['description'] == runner_name:
         runner.runner_id = e['id']
         found = True
         break
     if not found:
-      raise KeeperException("No runner id found with provided tag: %s" % runner_tag)
+      raise KeeperException("No runner id found with provided tag: %s" % runner_name)
     app.logger.debug("Obtained runner: %s in project runner registration." % runner)    
     
     r = db.check_project_runner(project_name, vm.vm_name, runner.runner_id, snapshot.snapshot_name, app)
@@ -139,10 +139,10 @@ class KeeperManager:
 
 
   @staticmethod
-  def unregister_runner_by_tag(runner_tag, app):
-    rs = db.get_project_runner_by_tag(runner_tag)
+  def unregister_runner_by_name(runner_name, app):
+    rs = db.get_project_runner_by_name(runner_name)
     if len(rs) == 0:
-      app.logger.error("Runner tag: %s does not exist." % runner_tag)
+      app.logger.error("Runner name: %s does not exist." % runner_name)
     for r in rs:
       db.delete_project_runner(r['project_id'], r['runner_id'], app)
       db.delete_runner(r['runner_id'], app)

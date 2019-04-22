@@ -63,15 +63,15 @@ def get_project_runner(vm_name):
   ).fetchone()
 
 
-def get_project_runner_by_tag(runner_tag):
+def get_project_runner_by_name(runner_name):
   return get_db().execute(
     '''select p.project_id, r.runner_id, v.vm_id, vs.snapshot_name from runner r
           left join project_runner pr on pr.runner_id = r.runner_id
           left join project p on p.project_id = pr.project_id
           left join vm v on v.vm_id = pr.vm_id
           left join vm_snapshot vs on vs.vm_id = v.vm_id
-        where r.runner_tag = ?
-    ''', (runner_tag,)
+        where r.runner_name = ?
+    ''', (runner_name,)
   ).fetchall()
 
 
@@ -146,7 +146,7 @@ def insert_user_project(user, project, app):
 
 
 def insert_runner(runner, app):
-  proxied_execute(app, 'insert into runner (runner_id, runner_tag) values (?, ?)', (runner.runner_id, runner.runner_tag))
+  proxied_execute(app, 'insert into runner (runner_id, runner_name) values (?, ?)', (runner.runner_id, runner.runner_name))
 
 
 def insert_project_runner(project, vm, runner, app):
