@@ -105,7 +105,7 @@ class KeeperManager:
     project = Project(project_name)
     found = False
     for p in projects:
-      if p['name'] == project_name:
+      if p['path_with_namespace'] == project_name:
         project.project_id = p['id']
         found = True
         break
@@ -166,7 +166,7 @@ class KeeperManager:
     project = Project(project_name)
     found = False
     for p in projects:
-      if p['name'] == project_name:
+      if p['path_with_namespace'] == project_name:
         project.project_id = p['id']
         found = True
         break
