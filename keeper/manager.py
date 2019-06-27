@@ -107,6 +107,7 @@ class KeeperManager:
   @staticmethod
   def trigger_pipeline(project_id, ref, app):
     r = db.get_user_token_by_project(project_id)
+    app.logger.debug("token: %s", r['token'])
     request_url = "%s/projects/%d/pipeline?ref=%s" % (get_info('GITLAB_API_PREFIX'), project_id, ref)
     resp = requests.post(request_url, headers={"PRIVATE-TOKEN": r['token']})
     if resp.status_code >= 400:

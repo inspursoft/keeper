@@ -140,7 +140,7 @@ def unregister_runner():
 '''
 {"object_kind":"merge_request","project":{"name":"myrepo0624"},"object_attributes":{"source_branch":"master","source_project_id":28,"state":"opened","last_commit":{"id":"40ed5e6e72feb12f8a0a87374b2822adb2271214"},"work_in_progress":false}}
 '''
-@bp.route('/hook', methods=["GET", "POST"])
+@bp.route('/hook', methods=["POST"])
 def hook():
   username = request.args.get('username', None)
   if username is None:
