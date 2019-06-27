@@ -36,9 +36,14 @@ def init_app(app):
   app.teardown_appcontext(close_db)
   app.cli.add_command(init_db_command)
 
-def get_user_token(project_name, username):
+def get_user_token(username):
   return get_db().execute(
     '''select token from user u where username = ?''', (username,)
+  ).fetchone()
+
+def get_user_token_by_project(project_id):
+  return get_db().execute(
+    '''select token from user u left join user_project where project_id = ?''', (project_id,)
   ).fetchone()
 
 def get_vm(name):

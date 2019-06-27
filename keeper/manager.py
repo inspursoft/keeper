@@ -85,8 +85,8 @@ class KeeperManager:
 
 
   @staticmethod
-  def get_gitlab_runners(project_id, token, app):
-    request_url = "%s/projects/%d/runners?private_token=%s" % (get_info('GITLAB_API_PREFIX'), project_id, token)
+  def get_gitlab_runners(project, token, app):
+    request_url = "%s/projects/%d/runners?private_token=%s" % (get_info('GITLAB_API_PREFIX'), project.project_id, token)
     resp = requests.get(request_url)
     if resp.status_code >= 400:
       app.logger.error("Failed to request URL: %s with status code: %d", request_url, resp.status_code)
@@ -95,13 +95,38 @@ class KeeperManager:
 
 
   @staticmethod
-  def register_project_runner(username, project_name, runner_name, vm, snapshot, app):
-    r = db.get_user_token(project_name, username)
+  def get_repo_commit_status(project_id, commit_id, token, app):
+    request_url = "%s/projects/%d/repository/commits/%s/statuses?private_token=%s" % (get_info('GITLAB_API_PREFIX'), project_id, commit_id, token)
+    resp = requests.get(request_url)
+    if resp.status_code >= 400:
+      app.logger.error("Failed to request URL: %s with status code: %d", request_url, resp.status_code)
+      raise KeeperException("Failed to request URL: %s with status code: %d" % (request_url, resp.status_code))
+    return resp.json()
+
+
+  @staticmethod
+  def trigger_pipeline(project_id, ref, app):
+    r = db.get_user_token_by_project(project_id)
+    request_url = "%s/projects/%d/pipeline?ref=%s" % (get_info('GITLAB_API_PREFIX'), project_id, ref)
+    resp = requests.post(request_url, headers={"PRIVATE-TOKEN": r['token']})
+    if resp.status_code >= 400:
+      app.logger.error("Failed to request URL: %s with status code: %d", request_url, resp.status_code)
+      raise KeeperException("Failed to request URL: %s with status code: %d" % (request_url, resp.status_code))
+    return resp.json()
+
+  
+  @staticmethod
+  def resolve_token(username, app):
+    r = db.get_user_token(username)
     if r is None:
       app.logger.error("User: %s does not exists." % username)
       raise KeeperException("User: %s does not exists." % username)
-    
-    projects = KeeperManager.get_gitlab_projects(r['token'], app)
+    return r['token']
+
+
+  @staticmethod
+  def resolve_project(username, project_name, token, app):
+    projects = KeeperManager.get_gitlab_projects(token, app)
     project = Project(project_name)
     found = False
     for p in projects:
@@ -112,8 +137,13 @@ class KeeperManager:
     if not found:
       raise KeeperException("No project id found with provided project name: %s" % project_name)
     app.logger.debug("Obtained project: %s in project runner registration." % project)    
-      
-    runners = KeeperManager.get_gitlab_runners(project.project_id, r['token'], app)
+    return project
+
+
+  @staticmethod
+  def register_project_runner(username, project_name, runner_name, vm, snapshot, token, app):
+    project = KeeperManager.resolve_project(username, project_name, token, app)
+    runners = KeeperManager.get_gitlab_runners(project, token, app)
     runner = Runner(runner_name)
     found = False
     for e in runners:
@@ -162,16 +192,7 @@ class KeeperManager:
         break
     if not found:
       raise KeeperException("No user id found with provided username: %s" % username)
-    projects = KeeperManager.get_gitlab_projects(user.token, app)
-    project = Project(project_name)
-    found = False
-    for p in projects:
-      if p['path_with_namespace'] == project_name:
-        project.project_id = p['id']
-        found = True
-        break
-    if not found:
-      raise KeeperException("No project id found with provided project name: %s" % project_name)
+    project = KeeperManager.resolve_project(username, project_name, token, app)
     app.logger.debug("Obtained project: %s in user creation with project." % project)    
     r = db.check_user_project(user.username, project.project_name, app)
     if r['cnt'] == 0:
@@ -183,5 +204,5 @@ class KeeperManager:
     else:
       app.logger.error("User: %s with project: %s already exists." % (user.username, project.project_name))
       raise KeeperException("User: %s with project: %s already exists." % (user.username, project.project_name))
-
-
+    
+    

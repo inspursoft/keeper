@@ -135,5 +135,37 @@ def unregister_runner():
   except KeeperException as e:
     return abort(500, e)
   return jsonify(message="Successful unregister project runner.")
+
+
+'''
+{"object_kind":"merge_request","project":{"name":"myrepo0624"},"object_attributes":{"source_branch":"master","source_project_id":28,"state":"opened","last_commit":{"id":"40ed5e6e72feb12f8a0a87374b2822adb2271214"},"work_in_progress":false}}
+'''
+@bp.route('/hook', methods=["GET", "POST"])
+def hook():
+  username = request.args.get('username', None)
+  if username is None:
+    return abort(400, "Username is required.")
+  data = request.get_json()
+  if data is None:
+    current_app.logger.error("None of request body.")
+    return abort(400, "None of request body.")
+  project_name = data["project"]["name"]
+  object_attr = data["object_attributes"]
+  source_project_id = object_attr['source_project_id']
+  ref = object_attr["source_branch"]
+  commit_id = object_attr["last_commit"]["id"]
+  try:
+    token = KeeperManager.resolve_token(username, current_app)
+    project = KeeperManager.resolve_project(username, username + '/' + project_name, token, current_app)
+    builds = KeeperManager.get_repo_commit_status(project.project_id, commit_id, token, current_app)
+    for build in builds:
+      if build['status'] == 'skipped':
+        abort(422, "INFO: %s build skipped (reason: build %d is in \"%s\" status)" % (commit_id, build['id'], build['status']))
+        return
+    resp = KeeperManager.trigger_pipeline(source_project_id, ref, current_app)
+    return jsonify(resp)
+  except KeeperException as e:
+    return abort(500, e)
+
   
   
