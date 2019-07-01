@@ -165,6 +165,7 @@ def hook():
     resp = KeeperManager.trigger_pipeline(source_project_id, ref, current_app)
     return jsonify(resp)
   except KeeperException as e:
+    current_app.logger.error(e)
     return abort(500, e)
 
   

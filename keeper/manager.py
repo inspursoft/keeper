@@ -106,6 +106,7 @@ class KeeperManager:
 
   @staticmethod
   def trigger_pipeline(project_id, ref, app):
+    app.logger.debug("Trigger project_id: %d", project_id)
     r = db.get_user_token_by_project(project_id)
     app.logger.debug("token: %s", r['token'])
     request_url = "%s/projects/%d/pipeline?ref=%s" % (get_info('GITLAB_API_PREFIX'), project_id, ref)
