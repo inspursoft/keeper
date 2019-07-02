@@ -168,5 +168,45 @@ def hook():
     current_app.logger.error(e)
     return abort(500, e)
 
+default_open_branch_prefix = 'fix:'
+default_ref = 'dev'
+
+@bp.route('/issue', methods=["POST"])
+def issue():
+  username = request.args.get('username', None)
+  if username is None:
+    return abort(400, "Username is required.")
+  ref = request.args.get('ref', None)
+  if ref is None:
+    ref = default_ref
+  open_branch_prefix = request.args.get('open_branch_prefix', None)
+  if open_branch_prefix is None:
+    open_branch_prefix = default_open_branch_prefix
+
+  current_app.logger.info("Current ref branch is: %s", ref)
+  current_app.logger.info("Current openning branch prefix is: %s", open_branch_prefix)
+  data = request.get_json()
+  if data is None:
+    current_app.logger.error("None of request body.")
+    return abort(400, "None of request body.")
+  # current_app.logger.debug(data)
+  project = data['project']
+  project_id = project['id']
+  object_attr = data["object_attributes"]
+  title = object_attr["title"]
+  issue_iid = object_attr["iid"]
+  try:
+    s_title = title.lower()
+    if s_title.startswith(open_branch_prefix):
+      branch_name = s_title[len(open_branch_prefix):].strip(' ').replace(' ', '-')
+      KeeperManager.create_branch(project_id, branch_name, ref, current_app)
+      KeeperManager.comment_on_issue(project_id, issue_iid, "Branch: %s has been created." % (branch_name,), current_app)
+      return jsonify(message="Successful created branch with issue.")
+    current_app.logger.debug("No need to create branch with openning issue.")
+    return jsonify(message="No need to create branch with openning issue.")
+  except KeeperException as e:
+    current_app.logger.error(e)
+    return abort(500, e)
+
   
   

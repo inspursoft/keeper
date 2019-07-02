@@ -105,18 +105,40 @@ class KeeperManager:
 
 
   @staticmethod
-  def trigger_pipeline(project_id, ref, app):
-    app.logger.debug("Trigger project_id: %d", project_id)
+  def request_gitlab_api(project_id, request_url, app):
     r = db.get_user_token_by_project(project_id)
-    app.logger.debug("token: %s", r['token'])
-    request_url = "%s/projects/%d/pipeline?ref=%s" % (get_info('GITLAB_API_PREFIX'), project_id, ref)
+    if r is None:
+      app.logger.error("Failed to get token with project ID: %d", project_id)
+      raise KeeperException("Failed to get token with project ID: %d" % (project_id,))
+    app.logger.debug("Got token: %s", r['token'])
     resp = requests.post(request_url, headers={"PRIVATE-TOKEN": r['token']})
     if resp.status_code >= 400:
-      app.logger.error("Failed to request URL: %s with status code: %d", request_url, resp.status_code)
-      raise KeeperException("Failed to request URL: %s with status code: %d" % (request_url, resp.status_code))
+      app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
+      raise KeeperException("Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
     return resp.json()
 
+
+  @staticmethod
+  def trigger_pipeline(project_id, ref, app):
+    app.logger.debug("Trigger pipeline with project_id: %d", project_id)
+    request_url = "%s/projects/%d/pipeline?ref=%s" % (get_info('GITLAB_API_PREFIX'), project_id, ref)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app)
+
+
+  @staticmethod
+  def create_branch(project_id, branch_name, ref, app):
+    app.logger.debug("Create branch: %s from %s with project_id: %d", branch_name, ref, project_id)
+    request_url = "%s/projects/%d/repository/branches?branch=%s&ref=%s" % (get_info('GITLAB_API_PREFIX'), project_id, branch_name, ref)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app)
+
   
+  @staticmethod
+  def comment_on_issue(project_id, issue_iid, message, app):
+    app.logger.debug("Comment on issue to project ID: % on issue IID: %d, with message: %s", project_id, issue_iid, message)
+    request_url = "%s/projects/%d/issues/%d/notes?body=%s" % (get_info('GITLAB_API_PREFIX'), project_id, issue_iid, message)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app)
+
+
   @staticmethod
   def resolve_token(username, app):
     r = db.get_user_token(username)
