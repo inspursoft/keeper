@@ -1,0 +1,4 @@
+{ "SETUP": {
+      "GITLAB_API_PREFIX": "http://10.110.25.227/api/v4"
+  }
+}

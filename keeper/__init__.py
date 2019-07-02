@@ -8,7 +8,7 @@ def create_app(test_config=None):
   app.config.from_mapping(
     DATABASE=os.path.join(app.instance_path, 'keeper.sqlite'),
   )
-  app.config.from_json('config.json', silent=True)
+  app.config.from_json(os.path.join(app.instance_path, 'config.json'), silent=True)
   #ensure the instance folder exists
   try:
     os.makedirs(app.instance_path)

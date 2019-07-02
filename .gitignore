@@ -3,7 +3,7 @@ venv/
 *.pyc
 __pycache__/
 
-instance/*.sqlite
+*.sqlite
 
 .pytest_cache/
 .coverage
@@ -12,3 +12,4 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+.DS_Store
