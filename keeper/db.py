@@ -36,10 +36,11 @@ def init_app(app):
   app.teardown_appcontext(close_db)
   app.cli.add_command(init_db_command)
 
-def get_user_token(username):
+def get_user_info(username):
   return get_db().execute(
-    '''select token from user u where username = ?''', (username,)
+    '''select user_id, token from user u where username = ?''', (username,)
   ).fetchone()
+
 
 def get_user_token_by_project(project_id):
   return get_db().execute(

@@ -42,7 +42,7 @@ def react():
       return abort(412, "Unsupport action %s to react." % action)
   except KeeperException as e:
     current_app.logger.error(e)
-    return abort(500, e)
+    return abort(e.code, e.message)
   return jsonify(message="Action %s is being taken at remote: %s" % (action, vm_runner['keeper_url']))
 
 
@@ -63,7 +63,7 @@ def snapshot():
     current_app.logger.info(exec_script(current_app, filepath, vm_runner['vm_id'], snapshot_name))
   except KeeperException as e:
     current_app.logger.error(e)
-    return abort(500, "Failed to execute script file: %s" % '%s-restore-snapshot.sh' % target)
+    return abort(e.message, "Failed to execute script file: %s" % '%s-restore-snapshot.sh' % target)
   finally:
     if manager.get_runner_id() is not None:
       manager.toggle_runner('true')
@@ -99,7 +99,7 @@ def add_user_project():
   try:
     KeeperManager.add_user_project(username, token, project_name, current_app)
   except KeeperException as e:
-    return abort(500, e)
+    return abort(e.code, e.message)
   return jsonify(message="Successful add user with project")
 
 
@@ -134,7 +134,7 @@ def register_runner():
   try:
     KeeperManager.register_project_runner(username, project_name, runner_name, vm, snapshot, current_app)
   except KeeperException as e:
-    return abort(500, e)
+    return abort(e.code, e.message)
   return jsonify(message="Successful register project runner.")
 
 
@@ -146,7 +146,7 @@ def unregister_runner():
   try:
     KeeperManager.unregister_runner_by_name(runner_name, current_app)
   except KeeperException as e:
-    return abort(500, e)
+    return abort(e.code, e.message)
   return jsonify(message="Successful unregister project runner.")
 
 
@@ -162,15 +162,13 @@ def hook():
   if data is None:
     current_app.logger.error("None of request body.")
     return abort(400, "None of request body.")
-  project_name = data["project"]["name"]
+  project_id = data["project"]["id"]
   object_attr = data["object_attributes"]
   source_project_id = object_attr['source_project_id']
   ref = object_attr["source_branch"]
   commit_id = object_attr["last_commit"]["id"]
   try:
-    token = KeeperManager.resolve_token(username, current_app)
-    project = KeeperManager.resolve_project(username, username + '/' + project_name, token, current_app)
-    builds = KeeperManager.get_repo_commit_status(project.project_id, commit_id, token, current_app)
+    builds = KeeperManager.get_repo_commit_status(project_id, commit_id, current_app)
     for build in builds:
       if build['status'] == 'skipped':
         abort(422, "INFO: %s build skipped (reason: build %d is in \"%s\" status)" % (commit_id, build['id'], build['status']))
@@ -179,7 +177,7 @@ def hook():
     return jsonify(resp)
   except KeeperException as e:
     current_app.logger.error(e)
-    return abort(500, e)
+    return abort(e.code, e.message)
 
 default_open_branch_prefix = 'fix:'
 default_ref = 'dev'
@@ -202,24 +200,61 @@ def issue():
   if data is None:
     current_app.logger.error("None of request body.")
     return abort(400, "None of request body.")
-  # current_app.logger.debug(data)
   project = data['project']
   project_id = project['id']
   object_attr = data["object_attributes"]
   title = object_attr["title"]
   issue_iid = object_attr["iid"]
-  try:
-    s_title = title.lower()
-    if s_title.startswith(open_branch_prefix):
-      branch_name = s_title[len(open_branch_prefix):].strip(' ').replace(' ', '-')
-      KeeperManager.create_branch(project_id, branch_name, ref, current_app)
-      KeeperManager.comment_on_issue(project_id, issue_iid, "Branch: %s has been created." % (branch_name,), current_app)
-      return jsonify(message="Successful created branch with issue.")
+
+  s_title = title.lower()
+  if not s_title.startswith(open_branch_prefix):
     current_app.logger.debug("No need to create branch with openning issue.")
     return jsonify(message="No need to create branch with openning issue.")
+
+  try:
+    branch_name = s_title[len(open_branch_prefix):].strip(' ').replace(' ', '-')
+    KeeperManager.create_branch(project_id, branch_name, ref, current_app)
+    KeeperManager.comment_on_issue(project_id, issue_iid, "Branch: %s has been created." % (branch_name,), current_app)
+    return jsonify(message="Successful created branch with issue.")
   except KeeperException as e:
     current_app.logger.error(e)
-    return abort(500, e)
+    return abort(e.code, e.message)
 
+
+default_description = 'Assigned issue: %s to %s'
+default_label = 'quality'
+default_open_issue_prefix = "bug:"
+
+
+@bp.route("/issues/assign", methods=["POST"])
+def issue_assign():
+  username = request.args.get('username', None)
+  if username is None:
+    return abort(400, "Username is required.")
+  project_name = request.args.get('project_name', None)
+  if project_name is None:
+    return abort(400, "Project name is required.")
+  data = request.get_json()
+  if data is None:
+    return abort(400, "Requested data is missing.")
+  if "title" not in data:
+    return abort(400, "Issue title is required.")
+  if "assignee" not in data:
+    return abort(400, "Issue assignee is required.")
+
+  s_title = data['title'].lower()
+  if not s_title.startswith(default_open_issue_prefix):
+    current_app.logger.debug("No need to create issue to assignee as title is: %s", data['title'])
+    return jsonify(message="No need to create issue to assignee as title is: %s" % data['title'])
   
-  
+  if "description" not in data:
+    description = default_description % (data['title'], username)    
+  if "label" not in data:
+    label = default_label
+  try:
+    project = KeeperManager.resolve_project(username, project_name, current_app)
+    KeeperManager.post_issue_to_assignee(project.project_id, data['title'], data['description'], data['label'], data['assignee'], current_app)
+    return jsonify(message="Successful assigned issue to user: %s under project: %s" % (username, project_name))
+  except KeeperException as e:
+    current_app.logger.error(e)
+    return abort(e.code, e.message)
