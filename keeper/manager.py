@@ -2,6 +2,7 @@ from . import get_info
 import keeper.db as db
 
 import requests
+from requests.auth import HTTPBasicAuth
 
 from keeper.model import *
 
@@ -119,6 +120,22 @@ class KeeperManager:
       app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
       raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
     return resp.json()
+
+
+  @staticmethod
+  def request_sonarqube_api(sonarqube_token, request_url, app):
+    app.logger.debug("Got Sonarqube token: %s", sonarqube_token)
+    resp = requests.get(request_url, auth=HTTPBasicAuth(sonarqube_token,""))
+    if resp.status_code >= 400:
+      app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
+      raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
+    return resp.json()
+
+  @staticmethod
+  def search_sonarqube_issues(sonarqube_token, sonarqube_project_name, app):
+    app.logger.debug("Request Sonarqube issues for project: %s", sonarqube_project_name)
+    request_url = "%s/issues/search?componentKeys=%s&severities=CRITICAL&createdInLast=10d" % (get_info('SONARQUBE_API_PREFIX'), sonarqube_project_name)
+    return KeeperManager.request_sonarqube_api(sonarqube_token, request_url, app)
 
 
   @staticmethod
@@ -247,5 +264,37 @@ class KeeperManager:
     else:
       app.logger.error("User: %s with project: %s already exists." % (user.username, project.project_name))
       raise KeeperException(409, "User: %s with project: %s already exists." % (user.username, project.project_name))
-    
+
+  
+  @staticmethod
+  def post_issue_per_sonarqube(sonarqube_token, sonarqube_project_name, app):
+    resp = KeeperManager.search_sonarqube_issues(sonarqube_token, sonarqube_project_name, app)
+    issues = resp["issues"]
+    if len(issues) == 0:
+      raise KeeperException(404, "No found from SonarQube issues.")
+    for issue in issues:
+      username = issue["assignee"]
+      user = KeeperManager.resolve_user(username, app)
+      r = db.check_issue_exists(user["user_id"], issue["hash"])
+      if r["cnt"] > 0:
+        raise KeeperException(409, "User ID: %d with issue hash: %s already exists." % (user["user_id"], issue["hash"]))
+        continue
+      
+      title = issue["message"]
+      component = issue["component"]
+      description = "Code file:" + component[component.index(":") + 1:]
+      label = issue["severity"]
+      
+      app.logger.debug("Resolved issue title: {}".format(title))
+      app.logger.debug("Resolved issue description: {}".format(description))
+      app.logger.debug("Resolved issue label: {}".format(label))
+
+      app.logger.debug("Resolved user as assignee: {}".format(user))
+      assignee_project = username + "/" + sonarqube_project_name[sonarqube_project_name.index("-") + 1:]
+      project = KeeperManager.resolve_project(username, assignee_project, app)
+      app.logger.debug("Resolved project with path: {}".format(project))
+
+      db.insert_issue_hash_with_user(user["user_id"], issue["hash"], app)
+      KeeperManager.post_issue_to_assignee(project.project_id, title, description, label, username, app)
+
     

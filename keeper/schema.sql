@@ -31,6 +31,11 @@ create table user_project (
   project_id integer not null
 );
 
+create table user_issue (
+  user_id integer not null,
+  issue_hash text not null
+);
+
 create table project_runner (
   project_id integer not null,
   vm_id text not null,

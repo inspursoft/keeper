@@ -120,15 +120,24 @@ def check_project_runner(project_name, vm_name, runner_id, snapshot_name, app):
   ).fetchone()
 
 
+def check_issue_exists(user_id, issue_hash):
+  return get_db().execute(
+    '''select count() as cnt from user_issue ui
+         where ui.user_id = ? and ui.issue_hash = ?
+    ''', (user_id, issue_hash)
+  ).fetchone()
+
+
 def proxied_execute(app, sql, *data):
   c = get_db()
   try:
     c.execute(sql, *data)
+    c.commit()
   except Exception as e:
     app.logger.error(e)
     c.rollback()
     raise KeeperException(e)
-  c.commit()
+ 
 
 
 def insert_vm(vm, app):
@@ -173,3 +182,6 @@ def delete_vm(vm_id, app):
 
 def delete_snapshot(snapshot_name, app):
   proxied_execute(app, 'delete from vm_snapshot where snapshot_name = ?', (snapshot_name,))
+
+def insert_issue_hash_with_user(user_id, issue_hash, app):
+  proxied_execute(app, 'insert into user_issue (user_id, issue_hash) values (?, ?)', (user_id, issue_hash))

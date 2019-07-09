@@ -182,6 +182,7 @@ def hook():
 default_open_branch_prefix = 'fix:'
 default_ref = 'dev'
 
+
 @bp.route('/issue', methods=["POST"])
 def issue():
   username = request.args.get('username', None)
@@ -255,6 +256,22 @@ def issue_assign():
     project = KeeperManager.resolve_project(username, project_name, current_app)
     KeeperManager.post_issue_to_assignee(project.project_id, data['title'], data['description'], data['label'], data['assignee'], current_app)
     return jsonify(message="Successful assigned issue to user: %s under project: %s" % (username, project_name))
+  except KeeperException as e:
+    current_app.logger.error(e)
+    return abort(e.code, e.message)
+
+
+@bp.route("/issues/per-sonarqube", methods=["POST"])
+def issue_per_sonarqube():
+  sonarqube_token = request.args.get("sonarqube_token", None)
+  if sonarqube_token is None:
+    return abort(400, "SonarQube token is required.")
+  sonarqube_project_name = request.args.get("sonarqube_project_name", None)
+  if sonarqube_token is None:
+    return abort(400, "SonarQube project name is required.")
+  try:
+    KeeperManager.post_issue_per_sonarqube(sonarqube_token, sonarqube_project_name, current_app)
+    return jsonify(message="Successful assigned issue to project: %s" % (sonarqube_project_name))
   except KeeperException as e:
     current_app.logger.error(e)
     return abort(e.code, e.message)
