@@ -6,6 +6,8 @@ from requests.auth import HTTPBasicAuth
 
 from keeper.model import *
 
+import re
+
 class KeeperException(Exception):
   def __init__(self, code, message):
     self.code = code
@@ -105,17 +107,20 @@ class KeeperManager:
 
 
   @staticmethod
-  def request_gitlab_api(project_id, request_url, app, method='POST'):
+  def request_gitlab_api(project_id, request_url, app, method='POST', params={}):
     r = db.get_user_token_by_project(project_id)
     if r is None:
       app.logger.error("Failed to get token with project ID: %d", project_id)
       raise KeeperException(404, "Failed to get token with project ID: %d" % (project_id,))
     app.logger.debug("Got token: %s", r['token'])
     resp = {}
+    default_headers={"PRIVATE-TOKEN": r['token']}
     if method == 'POST':
-      resp = requests.post(request_url, headers={"PRIVATE-TOKEN": r['token']})
+      resp = requests.post(request_url, headers=default_headers, params=params)
     elif method == 'GET':
-      resp = requests.get(request_url, headers={"PRIVATE-TOKEN": r['token']})
+      resp = requests.get(request_url, headers=default_headers, params=params)
+    elif method == 'PUT':
+      resp = requests.put(request_url, headers=default_headers, params=params)
     if resp.status_code >= 400:
       app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
       raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
@@ -130,6 +135,7 @@ class KeeperManager:
       app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
       raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
     return resp.json()
+
 
   @staticmethod
   def search_sonarqube_issues(sonarqube_token, sonarqube_project_name, app):
@@ -151,7 +157,31 @@ class KeeperManager:
     request_url = "%s/projects/%d/repository/branches?branch=%s&ref=%s" % (get_info('GITLAB_API_PREFIX'), project_id, branch_name, ref)
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
 
-  
+
+  @staticmethod
+  def create_branch_per_assignee(assignee_id, branch_name, ref, app):
+    r = db.get_project_by_user_id(assignee_id)
+    if r is None:
+      app.logger.error("Failed to get project by assignee ID: %d", assignee_id)
+      raise KeeperException(404, "Failed to get project by assignee ID: %s" % (assignee_id,))
+    assignee = r['username']
+    project_id = r["project_id"]
+    project_name = r["project_name"]
+    app.logger.debug("Create branch: %s per assignee: %s to project: %s", branch_name, assignee, project_name)
+    try:
+      KeeperManager.get_branch(project_id, branch_name, app)
+    except KeeperException as e:
+      app.logger.error("Branch: %s already exist to project: %s for assignee: %s ", branch_name, project_name, assignee)
+    return KeeperManager.create_branch(project_id, branch_name, ref, app)
+
+
+  @staticmethod
+  def get_branch(project_id, branch_name, app):
+    app.logger.debug("Get branch with project ID: %d", project_id)
+    request_url = "%s/projects/%d/repository/branches/%s" % (get_info('GITLAB_API_PREFIX'), project_id, branch_name)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
+
+
   @staticmethod
   def comment_on_issue(project_id, issue_iid, message, app):
     app.logger.debug("Comment on issue to project ID: %d on issue IID: %d, with message: %s", project_id, issue_iid, message)
@@ -165,6 +195,27 @@ class KeeperManager:
     r = KeeperManager.resolve_user(assignee, app)
     request_url = "%s/projects/%d/issues?title=%s&description=%s&labels=%s&assignee_ids=%d" % (get_info('GITLAB_API_PREFIX'), project_id, title, description, label, r['user_id'])
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
+
+  
+  @staticmethod
+  def update_issue(project_id, issue_iid, updates, app):
+    app.logger.debug("Update issue to project ID: %d to issue IID: %d with changes: %s", project_id, issue_iid, updates)
+    request_url = "%s/projects/%d/issues/%d" % (get_info('GITLAB_API_PREFIX'), project_id, issue_iid)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method="PUT", params=updates)
+
+
+  @staticmethod
+  def get_milestone(project_id, milestone_id, app):
+    app.logger.debug("Get milestone with project ID: %d with milestone ID: %d")
+    request_url = "%s/projects/%d/milestones/%d" % (get_info('GITLAB_API_PREFIX'), project_id, milestone_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
+
+
+  @staticmethod
+  def get_all_milestones(project_id, params, app):
+    app.logger.debug("Get all milestones with project ID: %d", project_id)
+    request_url = "%s/projects/%d/milestones" % (get_info('GITLAB_API_PREFIX'), project_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET', params=params)
 
 
   @staticmethod
@@ -180,6 +231,12 @@ class KeeperManager:
       app.logger.error("User: %s does not exists." % username)
       raise KeeperException(404, "User: %s does not exists." % username)
     return r
+
+  
+  @staticmethod
+  def resolve_branch_name(title, app):
+    app.logger.debug("Resolve branch name with title: %s", title)
+    return re.sub(r'\W', '-', title.lower())
 
 
   @staticmethod

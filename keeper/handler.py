@@ -213,7 +213,7 @@ def issue():
     return jsonify(message="No need to create branch with openning issue.")
 
   try:
-    branch_name = s_title[len(open_branch_prefix):].strip(' ').replace(' ', '-')
+    branch_name = KeeperManager.resolve_branch_name(s_title[len(open_branch_prefix):])
     KeeperManager.create_branch(project_id, branch_name, ref, current_app)
     KeeperManager.comment_on_issue(project_id, issue_iid, "Branch: %s has been created." % (branch_name,), current_app)
     return jsonify(message="Successful created branch with issue.")
@@ -225,7 +225,6 @@ def issue():
 default_description = 'Assigned issue: %s to %s'
 default_label = 'quality'
 default_open_issue_prefix = "bug:"
-
 
 @bp.route("/issues/assign", methods=["POST"])
 def issue_assign():
@@ -272,6 +271,51 @@ def issue_per_sonarqube():
   try:
     KeeperManager.post_issue_per_sonarqube(sonarqube_token, sonarqube_project_name, current_app)
     return jsonify(message="Successful assigned issue to project: %s" % (sonarqube_project_name))
+  except KeeperException as e:
+    current_app.logger.error(e)
+    return abort(e.code, e.message)
+
+
+@bp.route("/issues/open-peer", methods=["POST"])
+def issue_open_peer():
+  ref = request.args.get('ref', None)
+  if ref is None:
+    ref = default_ref
+  default_assignee = request.args.get('default_assignee', None)
+  
+  data = request.get_json()
+  current_app.logger.debug(data)
+  object_attr = data["object_attributes"]
+  project_id = object_attr["project_id"]
+  issue_iid = object_attr["iid"]
+  issue_title = object_attr["title"]
+  branch_name = KeeperManager.resolve_branch_name("{}-{}".format(issue_iid, issue_title), current_app)
+  current_app.logger.debug("Create branch: %s with ref: %s", branch_name, ref) 
+  try:
+    KeeperManager.get_branch(project_id, branch_name, current_app)
+  except KeeperException as e:
+    if e.code == 404:
+      current_app.logger.debug("Creating branch: %s as it does not exists will create one.", branch_name)
+      KeeperManager.create_branch(project_id, branch_name, ref, current_app)
+    else:
+      current_app.logger.error(e)
+      return abort(e.code, e.message)
+  try:
+    assignee_id = object_attr["assignee_id"]
+    milestone_id = object_attr["milestone_id"]
+    if assignee_id is None or milestone_id is None:
+      if assignee_id is None:
+       assignee = KeeperManager.resolve_user(default_assignee, current_app)
+       assignee_id = assignee["user_id"]
+      if milestone_id is None:
+        milestones = KeeperManager.get_all_milestones(project_id, {"state": "active"}, current_app) 
+        if len(milestones) == 0:
+          current_app.logger.error("No active milestones found with project ID: %d" % (project_id))
+          return abort(404, "No active milestones found with project ID: %d" % (project_id))
+        milestone_id = milestones[-1]["id"]
+      KeeperManager.update_issue(project_id, issue_iid, {"assignee_ids": [assignee["user_id"]], "milestone_id": milestone_id}, current_app)
+    KeeperManager.create_branch_per_assignee(assignee_id, branch_name, ref, current_app)
+    return jsonify(message="Successful created branch: %s per assignee ID: %d" % (branch_name, assignee_id))
   except KeeperException as e:
     current_app.logger.error(e)
     return abort(e.code, e.message)

@@ -69,6 +69,16 @@ def get_project_runner(vm_name):
   ).fetchone()
 
 
+def get_project_by_user_id(user_id):
+  return get_db().execute(
+    '''select p.project_id, p.project_name, u.username
+         from project p
+           left join user_project up on up.project_id = p.project_id
+           left join user u on up.user_id = u.user_id
+         where up.user_id = ?''', (user_id,)
+  ).fetchone()
+
+
 def get_project_runner_by_name(runner_name):
   return get_db().execute(
     '''select p.project_id, r.runner_id, v.vm_id, vs.snapshot_name from runner r
