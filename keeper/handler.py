@@ -284,9 +284,10 @@ def issue_open_peer():
   default_assignee = request.args.get('default_assignee', None)
   
   data = request.get_json()
-  current_app.logger.debug(data)
+  project = data["project"]
+  project_id = project["id"]
+  project_name = project["name"]
   object_attr = data["object_attributes"]
-  project_id = object_attr["project_id"]
   issue_iid = object_attr["iid"]
   issue_title = object_attr["title"]
   branch_name = KeeperManager.resolve_branch_name("{}-{}".format(issue_iid, issue_title), current_app)
@@ -314,7 +315,7 @@ def issue_open_peer():
           return abort(404, "No active milestones found with project ID: %d" % (project_id))
         milestone_id = milestones[-1]["id"]
       KeeperManager.update_issue(project_id, issue_iid, {"assignee_ids": [assignee["user_id"]], "milestone_id": milestone_id}, current_app)
-    KeeperManager.create_branch_per_assignee(assignee_id, branch_name, ref, current_app)
+    KeeperManager.create_branch_per_assignee(project_name, assignee_id, branch_name, ref, current_app)
     return jsonify(message="Successful created branch: %s per assignee ID: %d" % (branch_name, assignee_id))
   except KeeperException as e:
     current_app.logger.error(e)

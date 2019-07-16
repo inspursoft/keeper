@@ -69,13 +69,13 @@ def get_project_runner(vm_name):
   ).fetchone()
 
 
-def get_project_by_user_id(user_id):
+def get_project_by_user_id(project_name, user_id):
   return get_db().execute(
     '''select p.project_id, p.project_name, u.username
          from project p
            left join user_project up on up.project_id = p.project_id
            left join user u on up.user_id = u.user_id
-         where up.user_id = ?''', (user_id,)
+         where p.project_name like ? and u.user_id = ?''', ('%{}'.format(project_name), user_id)
   ).fetchone()
 
 
@@ -146,7 +146,7 @@ def proxied_execute(app, sql, *data):
   except Exception as e:
     app.logger.error(e)
     c.rollback()
-    raise KeeperException(e)
+    raise KeeperException(500, e)
  
 
 
@@ -159,11 +159,11 @@ def insert_snapshot(snapshot, app):
 
 
 def insert_user(user, app):
-  proxied_execute(app, 'insert into user (user_id, username, token) values (?, ?, ?)', (user.user_id, user.username, user.token))
+  proxied_execute(app, 'insert or replace into user (user_id, username, token) values (?, ?, ?)', (user.user_id, user.username, user.token))
 
 
 def insert_project(project, app):
-  proxied_execute(app, 'insert into project (project_id, project_name) values (?, ?)', (project.project_id, project.project_name))
+  proxied_execute(app, 'insert or replace into project (project_id, project_name) values (?, ?)', (project.project_id, project.project_name))
 
 
 def insert_user_project(user, project, app):

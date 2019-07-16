@@ -159,20 +159,19 @@ class KeeperManager:
 
 
   @staticmethod
-  def create_branch_per_assignee(assignee_id, branch_name, ref, app):
-    r = db.get_project_by_user_id(assignee_id)
+  def create_branch_per_assignee(project_name, assignee_id, branch_name, ref, app):
+    r = db.get_project_by_user_id(project_name, assignee_id)
     if r is None:
       app.logger.error("Failed to get project by assignee ID: %d", assignee_id)
       raise KeeperException(404, "Failed to get project by assignee ID: %s" % (assignee_id,))
     assignee = r['username']
-    project_id = r["project_id"]
-    project_name = r["project_name"]
+    target_project_id = r['project_id']
     app.logger.debug("Create branch: %s per assignee: %s to project: %s", branch_name, assignee, project_name)
     try:
-      KeeperManager.get_branch(project_id, branch_name, app)
+      KeeperManager.get_branch(target_project_id, branch_name, app)
     except KeeperException as e:
       app.logger.error("Branch: %s already exist to project: %s for assignee: %s ", branch_name, project_name, assignee)
-    return KeeperManager.create_branch(project_id, branch_name, ref, app)
+    return KeeperManager.create_branch(target_project_id, branch_name, ref, app)
 
 
   @staticmethod
@@ -236,7 +235,7 @@ class KeeperManager:
   @staticmethod
   def resolve_branch_name(title, app):
     app.logger.debug("Resolve branch name with title: %s", title)
-    return re.sub(r'\W', '-', title.lower())
+    return re.sub(r'\W', '-', title.lower()).strip('-')
 
 
   @staticmethod
@@ -309,7 +308,7 @@ class KeeperManager:
         break
     if not found:
       raise KeeperException("No user id found with provided username: %s" % username)
-    project = KeeperManager.resolve_project(username, project_name, token, app)
+    project = KeeperManager.resolve_project(username, project_name, app)
     app.logger.debug("Obtained project: %s in user creation with project." % project)    
     r = db.check_user_project(user.username, project.project_name, app)
     if r['cnt'] == 0:
