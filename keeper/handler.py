@@ -291,10 +291,13 @@ def issue_per_sonarqube():
 
 @bp.route("/issues/open-peer", methods=["POST"])
 def issue_open_peer():
+
   ref = request.args.get('ref', None)
   if ref is None:
-    ref = default_ref
+    return abort(400, "Default ref is required.")
   default_assignee = request.args.get('default_assignee', None)
+  if default_assignee is None:
+    return abort(400, "Default assignee is required.")
   
   data = request.get_json()
   project = data["project"]
@@ -302,9 +305,10 @@ def issue_open_peer():
   project_name = project["name"]
   object_attr = data["object_attributes"]
   issue_iid = object_attr["iid"]
-  issue_title = object_attr["title"]
+  issue_title = 'issue as branch'
+
   branch_name = KeeperManager.resolve_branch_name("{}-{}".format(issue_iid, issue_title), current_app)
-  current_app.logger.debug("Create branch: %s with ref: %s", branch_name, ref) 
+  current_app.logger.debug("Create branch: %s with ref: %s", branch_name, ref)
   try:
     KeeperManager.get_branch(project_id, branch_name, current_app)
   except KeeperException as e:
@@ -313,7 +317,6 @@ def issue_open_peer():
       KeeperManager.create_branch(project_id, branch_name, ref, current_app)
     else:
       current_app.logger.error(e)
-      return abort(e.code, e.message)
   try:
     assignee_id = object_attr["assignee_id"]
     milestone_id = object_attr["milestone_id"]
