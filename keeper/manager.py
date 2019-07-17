@@ -203,8 +203,8 @@ class KeeperManager:
 
   @staticmethod
   def resolve_token(username, app):
-    r = KeeperManager.resolve_user(username, app)
-    return r['token']
+    user = KeeperManager.resolve_user(username, app)
+    return user.token
 
   @staticmethod
   def resolve_user(username, app):
