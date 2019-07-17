@@ -307,7 +307,7 @@ class KeeperManager:
         found = True
         break
     if not found:
-      raise KeeperException("No user id found with provided username: %s" % username)
+      raise KeeperException(404, "No user id found with provided username: %s" % username)
     project = KeeperManager.resolve_project(username, project_name, app)
     app.logger.debug("Obtained project: %s in user creation with project." % project)    
     r = db.check_user_project(user.username, project.project_name, app)
