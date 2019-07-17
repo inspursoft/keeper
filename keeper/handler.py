@@ -85,22 +85,35 @@ def exec_script(app, filepath, *args):
     client.close()
 
 
-@bp.route('/user_project', methods=['POST'])
-def add_user_project():
+@bp.route('/user', methods=['POST'])
+def add_user():
   username = request.args.get('username', None)
   if username is None:
     return abort(400, "Username is required.")
   token = request.args.get('token', None)
   if token is None:
     return abort(400, "Token is required.")
+  try:
+    KeeperManager.add_user(username, token, current_app)
+  except KeeperException as e:
+    return abort(e.code, e.message)
+  return jsonify(message="Successful added user.")
+
+
+@bp.route('/user_project', methods=['POST'])
+def add_project():
+  username = request.args.get('username', None)
+  if username is None:
+    return abort(400, "Username is required.")
   project_name = request.args.get('project_name', None)
   if project_name is None:
     return abort(400, "Project name is required.")
   try:
-    KeeperManager.add_user_project(username, token, project_name, current_app)
+    KeeperManager.add_project(username, project_name, current_app)
   except KeeperException as e:
     return abort(e.code, e.message)
-  return jsonify(message="Successful add user with project")
+  return jsonify(message="Successful added user with project")
+
 
 
 @bp.route('/register_runner', methods=['POST'])

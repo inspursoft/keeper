@@ -108,6 +108,14 @@ def check_vm_snapshot(vm_name, snapshot_name, app):
   ).fetchone()
 
 
+def check_user(username, app):
+  return get_db().execute(
+    '''select count() as cnt from user u
+        where u.username = ?
+    ''', (username,)
+  ).fetchone()
+
+
 def check_user_project(username, project_name, app):
   return get_db().execute(
       '''select count() as cnt from user u

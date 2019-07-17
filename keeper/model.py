@@ -7,7 +7,8 @@
 
 class User:
   __slots__ = 'user_id', 'username', 'token'
-  def __init__(self, username, token):
+  def __init__(self, user_id, username, token):
+    self.user_id = user_id
     self.username = username
     self.token = token
  
