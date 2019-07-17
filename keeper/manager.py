@@ -259,7 +259,7 @@ class KeeperManager:
   def register_project_runner(username, project_name, runner_name, vm, snapshot, app):
     token = KeeperManager.resolve_token(username, app)
     project = KeeperManager.resolve_project(username, project_name, app)
-    runners = KeeperManager.get_gitlab_runners(project["project_id"], app)
+    runners = KeeperManager.get_gitlab_runners(project.project_id, app)
     runner = Runner(runner_name)
     found = False
     for e in runners:
