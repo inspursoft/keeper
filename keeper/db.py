@@ -167,15 +167,15 @@ def insert_snapshot(snapshot, app):
 
 
 def insert_user(user, app):
-  proxied_execute(app, 'insert or replace into user (user_id, username, token) values (?, ?, ?)', (user.user_id, user.username, user.token))
+  proxied_execute(app, 'insert into user (user_id, username, token) values (?, ?, ?)', (user.user_id, user.username, user.token))
 
 
 def insert_project(project, app):
-  proxied_execute(app, 'insert or replace into project (project_id, project_name) values (?, ?)', (project.project_id, project.project_name))
+  proxied_execute(app, 'insert into project (project_id, project_name) values (?, ?)', (project.project_id, project.project_name))
 
 
 def insert_user_project(user, project, app):
-  proxied_execute(app, 'insert into user_project (project_id, user_id) values (?, ?)', (project.project_id, user.user_id))
+  proxied_execute(app, 'insert into user_project (project_id, user_id) values (?, ?)', (project['project_id'], user['user_id']))
 
 
 def insert_runner(runner, app):
