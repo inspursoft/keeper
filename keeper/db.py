@@ -175,7 +175,7 @@ def insert_project(project, app):
 
 
 def insert_user_project(user, project, app):
-  proxied_execute(app, 'insert into user_project (project_id, user_id) values (?, ?)', (project['project_id'], user['user_id']))
+  proxied_execute(app, 'insert into user_project (project_id, user_id) values (?, ?)', (project.project_id, user.user_id))
 
 
 def insert_runner(runner, app):

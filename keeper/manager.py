@@ -212,7 +212,7 @@ class KeeperManager:
     if r is None:
       app.logger.error("User: %s does not exists." % username)
       raise KeeperException(404, "User: %s does not exists." % username)
-    return r
+    return User(r['user_id'], username, r['token'])
 
   @staticmethod
   def resolve_branch_name(title, app):
