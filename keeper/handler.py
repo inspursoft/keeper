@@ -19,6 +19,10 @@ import paramiko
 
 from flask.cli import with_appcontext
 
+from werkzeug.utils import secure_filename
+
+import zipfile
+
 bp = Blueprint("handler", __name__, url_prefix="/api/v1")
 
 @bp.route("/react")
@@ -336,3 +340,36 @@ def issue_open_peer():
   except KeeperException as e:
     current_app.logger.error(e)
     return abort(e.code, e.message)
+
+@bp.route("/artifacts/upload", methods=["POST"])
+def upload_artifacts():
+  project_name = request.args.get("project_name", None)
+  if project_name is None:
+    return abort(400, "Project name is required.")
+  job_id = request.args.get("job_id", None)
+  if job_id is None:
+    return abort(400, "Job ID is required.")
+  f = request.files["artifact"]
+  if f is None:
+    return abort(400, "Uploaded artifacts is required.")
+  upload_path = os.path.join(get_info("UPLOAD_PATH"), project_name, job_id)
+  try:
+    os.makedirs(upload_path)
+  except OSError:
+    pass
+  source_path = os.path.join(upload_path, secure_filename(f.filename))
+  current_app.logger.debug("Save uploaded file to upload path: %s", source_path)
+  f.save(source_path)
+  if os.path.splitext(f.filename)[1] == '.zip':
+    current_app.logger.debug("Unzipping source file: %s", source_path)
+    dest_path = os.path.join(get_info("DEPLOY_PATH"), project_name, job_id)
+    target_folder = os.path.splitext(f.filename)[0]
+    target_path = os.path.join(dest_path, target_folder)
+    try:
+      os.makedirs(target_path)
+    except OSError:
+      pass
+    current_app.logger.debug("Unzip artifacts to: %s", target_path)
+    with zipfile.ZipFile(source_path) as zf:
+      zf.extractall(target_path)
+  return "Successful uploaded and processed artifacts."
