@@ -21,7 +21,7 @@ from flask.cli import with_appcontext
 
 from werkzeug.utils import secure_filename
 
-import zipfile
+import tarfile
 
 bp = Blueprint("handler", __name__, url_prefix="/api/v1")
 
@@ -352,6 +352,8 @@ def upload_artifacts():
   f = request.files["artifact"]
   if f is None:
     return abort(400, "Uploaded artifacts is required.")
+  if os.path.splitext(f.filename)[1] != '.gz':
+    return "Artifacts were not *.tar.gz file and would not be untarred."
   upload_path = os.path.join(get_info("UPLOAD_PATH"), project_name, job_id)
   try:
     os.makedirs(upload_path)
@@ -360,16 +362,14 @@ def upload_artifacts():
   source_path = os.path.join(upload_path, secure_filename(f.filename))
   current_app.logger.debug("Save uploaded file to upload path: %s", source_path)
   f.save(source_path)
-  if os.path.splitext(f.filename)[1] == '.zip':
-    current_app.logger.debug("Unzipping source file: %s", source_path)
-    dest_path = os.path.join(get_info("DEPLOY_PATH"), project_name, job_id)
-    target_folder = os.path.splitext(f.filename)[0]
-    target_path = os.path.join(dest_path, target_folder)
-    try:
-      os.makedirs(target_path)
-    except OSError:
-      pass
-    current_app.logger.debug("Unzip artifacts to: %s", target_path)
-    with zipfile.ZipFile(source_path) as zf:
-      zf.extractall(target_path)
+  current_app.logger.debug("Untar source file: %s", source_path)
+  dest_path = os.path.join(get_info("DEPLOY_PATH"), project_name, job_id)
+  target_path = os.path.join(dest_path)
+  try:
+    os.makedirs(target_path)
+  except OSError:
+    pass
+  current_app.logger.debug("Untar artifacts to: %s", target_path)
+  with tarfile.open(source_path) as tf:
+    tf.extractall(target_path)
   return "Successful uploaded and processed artifacts."
