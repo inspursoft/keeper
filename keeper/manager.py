@@ -185,11 +185,11 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(username, request_url, app, by_principle="username")
 
   @staticmethod
-  def post_issue_to_assignee(project_id, title, description, label, assignee, app):
+  def post_issue_to_assignee(username, project_id, title, description, label, assignee, app):
     app.logger.debug("Post issue to project ID: %d with title: %s, label: %s, description: %s ", project_id, title, description, label)
     r = KeeperManager.resolve_user(assignee, app)
     request_url = "%s/projects/%d/issues?title=%s&description=%s&labels=%s&assignee_ids=%d" % (get_info('GITLAB_API_PREFIX'), project_id, title, description, label, r['user_id'])
-    return KeeperManager.request_gitlab_api(project_id, request_url, app)
+    return KeeperManager.request_gitlab_api(username, request_url, app, by_principle="username")
 
   @staticmethod
   def update_issue(project_id, issue_iid, updates, app):
@@ -336,7 +336,7 @@ class KeeperManager:
       app.logger.debug("Resolved project with path: {}".format(project))
 
       db.insert_issue_hash_with_user(user["user_id"], issue["hash"], app)
-      KeeperManager.post_issue_to_assignee(project.project_id, title, description, label, username, app)
+      KeeperManager.post_issue_to_assignee(username, project.project_id, title, description, label, username, app)
 
   @staticmethod
   def get_note_template(name):
