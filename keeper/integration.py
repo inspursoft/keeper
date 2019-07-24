@@ -203,7 +203,11 @@ def note_issue(project_name, iid):
     message = KeeperManager.render_note_with_template(template.content, **entries)
     current_app.logger.debug("Rendered template content: %s", template.content)
     project = KeeperManager.resolve_project(default_issuer, project_name, current_app)
-    KeeperManager.comment_on_merge_request(default_issuer, project.project_id, iid, message, current_app)
+    try:
+      KeeperManager.comment_on_merge_request(default_issuer, project.project_id, iid, message, current_app)
+    except KeeperException as e0:
+      if e0.code == 404:
+        KeeperManager.comment_on_issue(default_issuer, project.project_id, iid, message, current_app)
     return jsonify(message="Successful commented notes on issue %d to the repo: %s" % (iid, project.project_name))
   except KeeperException as e:
     current_app.logger.error(e)
