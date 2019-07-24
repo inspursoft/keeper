@@ -15,7 +15,6 @@ class User:
   def __str__(self):
     return "user_id: %d, username: %s, token: %s" % (self.user_id, self.username, self.token)
 
-
 class Project:
   __slots__ = 'project_id', 'project_name'
   def __init__(self, project_name):
@@ -32,13 +31,11 @@ class VM:
     self.target = target
     self.keeper_url = keeper_url
 
-
 class Snapshot:
   __slots__ = 'vm_id', 'snapshot_name'
   def __init__(self, vm_id, snapshot_name):
     self.vm_id = vm_id
     self.snapshot_name = snapshot_name
-
 
 class Runner:
   __slots__ = 'runner_id', 'runner_name'
@@ -47,3 +44,12 @@ class Runner:
 
   def __str__(self):
     return "runner_id: %s, runner_name: %s" % (self.runner_id, self.runner_name)
+
+class NoteTemplate:
+  __slots__ = 'name', "content"
+  def __init__(self, name, content):
+    self.name = name
+    self.content = content
+    
+  def __str__(self):
+    return "template name: %s, content: %s" % (self.name, self.content)

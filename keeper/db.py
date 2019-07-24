@@ -41,7 +41,6 @@ def get_user_info(username):
     '''select user_id, token from user u where username = ?''', (username,)
   ).fetchone()
 
-
 def get_user_token_by_project(project_id):
   return get_db().execute(
     '''select u.token as token from user u left join user_project up on u.user_id = up.user_id where up.project_id = ?''', (project_id,)
@@ -68,7 +67,6 @@ def get_project_runner(vm_name):
        where v.vm_name = ?''', (vm_name,)
   ).fetchone()
 
-
 def get_project_by_user_id(project_name, user_id):
   return get_db().execute(
     '''select p.project_id, p.project_name, u.username
@@ -77,7 +75,6 @@ def get_project_by_user_id(project_name, user_id):
            left join user u on up.user_id = u.user_id
          where p.project_name like ? and u.user_id = ?''', ('%{}'.format(project_name), user_id)
   ).fetchone()
-
 
 def get_project_runner_by_name(runner_name):
   return get_db().execute(
@@ -90,14 +87,12 @@ def get_project_runner_by_name(runner_name):
     ''', (runner_name,)
   ).fetchall()
 
-
 def get_vm_snapshot(vm_name):
   return get_db().execute(
     '''select v.vm_id, v.vm_name, v.target, v.keeper_url, vs.snapshot_name from vm v 
         left join vm_snapshot vs on v.vm_id = vs.vm_id 
        where v.vm_name = ?''', (vm_name,)
   ).fetchone()
-
 
 def check_vm_snapshot(vm_name, snapshot_name, app):
   return get_db().execute(
@@ -107,14 +102,12 @@ def check_vm_snapshot(vm_name, snapshot_name, app):
     ''', (vm_name, snapshot_name)
   ).fetchone()
 
-
 def check_user(username, app):
   return get_db().execute(
     '''select count() as cnt from user u
         where u.username = ?
     ''', (username,)
   ).fetchone()
-
 
 def check_user_project(username, project_name, app):
   return get_db().execute(
@@ -124,7 +117,6 @@ def check_user_project(username, project_name, app):
           where u.username = ? and p.project_name = ?
       ''', (username, project_name)
     ).fetchone()
-
 
 def check_project_runner(project_name, vm_name, runner_id, snapshot_name, app):
   return get_db().execute(
@@ -137,7 +129,6 @@ def check_project_runner(project_name, vm_name, runner_id, snapshot_name, app):
     ''', (project_name, runner_id, vm_name, snapshot_name)
   ).fetchone()
 
-
 def check_issue_exists(user_id, issue_hash):
   return get_db().execute(
     '''select count() as cnt from user_issue ui
@@ -145,6 +136,11 @@ def check_issue_exists(user_id, issue_hash):
     ''', (user_id, issue_hash)
   ).fetchone()
 
+def get_note_template(name):
+  return get_db().execute(
+    '''select template_name, template_content from note_template
+         where template_name = ? ''', (name,)
+  ).fetchone()
 
 def proxied_execute(app, sql, *data):
   c = get_db()
@@ -156,50 +152,41 @@ def proxied_execute(app, sql, *data):
     c.rollback()
     raise KeeperException(500, e)
  
-
-
 def insert_vm(vm, app):
   proxied_execute(app, 'insert into vm (vm_id, vm_name, target, keeper_url) values (?, ?, ?, ?)', (vm.vm_id, vm.vm_name, vm.target, vm.keeper_url))
-
 
 def insert_snapshot(snapshot, app):
   proxied_execute(app, 'insert into vm_snapshot (vm_id, snapshot_name) values (?, ?)', (snapshot.vm_id, snapshot.snapshot_name))
 
-
 def insert_user(user, app):
   proxied_execute(app, 'insert into user (user_id, username, token) values (?, ?, ?)', (user.user_id, user.username, user.token))
-
 
 def insert_project(project, app):
   proxied_execute(app, 'insert into project (project_id, project_name) values (?, ?)', (project.project_id, project.project_name))
 
-
 def insert_user_project(user, project, app):
   proxied_execute(app, 'insert into user_project (project_id, user_id) values (?, ?)', (project.project_id, user.user_id))
-
 
 def insert_runner(runner, app):
   proxied_execute(app, 'insert into runner (runner_id, runner_name) values (?, ?)', (runner.runner_id, runner.runner_name))
 
-
 def insert_project_runner(project, vm, runner, app):
   proxied_execute(app, 'insert into project_runner (project_id, vm_id, runner_id) values (?, ?, ?)', (project.project_id, vm.vm_id, runner.runner_id))
-
 
 def delete_project_runner(project_id, runner_id, app):
   proxied_execute(app, 'delete from project_runner where project_id = ? and runner_id = ?', (project_id, runner_id))
 
-
 def delete_runner(runner_id, app):
   proxied_execute(app, 'delete from runner where runner_id = ?', (runner_id,))
 
-
 def delete_vm(vm_id, app):
   proxied_execute(app, 'delete from vm where vm_id = ?', (vm_id,))
-
 
 def delete_snapshot(snapshot_name, app):
   proxied_execute(app, 'delete from vm_snapshot where snapshot_name = ?', (snapshot_name,))
 
 def insert_issue_hash_with_user(user_id, issue_hash, app):
   proxied_execute(app, 'insert into user_issue (user_id, issue_hash) values (?, ?)', (user_id, issue_hash))
+
+def insert_note_template(name, template, app):
+  proxied_execute(app, 'replace into note_template (template_name, template_content) values (?, ?)', (name, template))

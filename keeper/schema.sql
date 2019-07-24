@@ -55,3 +55,9 @@ create table vm_snapshot (
   vm_id text unique not null,
   snapshot_name text not null
 );
+
+create table note_template (
+  id integer primary key autoincrement,
+  template_name text unique not null,
+  template_content text
+);

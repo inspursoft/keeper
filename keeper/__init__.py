@@ -25,6 +25,9 @@ def create_app(test_config=None):
   from . import handler
   app.register_blueprint(handler.bp)
 
+  from . import integration
+  app.register_blueprint(integration.bp)
+  
   return app
 
 def get_info(key):

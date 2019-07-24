@@ -1,12 +1,13 @@
-from . import get_info
-import keeper.db as db
-
 import requests
 from requests.auth import HTTPBasicAuth
 
 from keeper.model import *
+import keeper.db as db
+from keeper import get_info
 
 import re
+from jinja2 import Template
+from urllib import parse
 
 class KeeperException(Exception):
   def __init__(self, code, message):
@@ -53,13 +54,11 @@ class KeeperManager:
     if resp.status_code >= 400:
       raise KeeperException(resp.status_code, 'Failed to request with URL: %s' % request_url)
 
-
   def dispatch_task(self, dispatch_url):
     resp = requests.get(dispatch_url)
     self.current.logger.debug("Requested URL: %s with status: %d", dispatch_url, resp.status_code)
     if resp.status_code >= 400:
       raise KeeperException(resp.status_code, 'Failed to request with URL: %s' % dispatch_url)
-
 
   @staticmethod
   def add_vm_snapshot(vm, snapshot, app):
@@ -71,9 +70,8 @@ class KeeperManager:
       app.logger.error("VM: %s with snapshot: %s already exists." % (vm.vm_name, snapshot.snapshot_name))
       raise KeeperException(409, "VM: %s with snapshot: %s already exists." % (vm.vm_name, snapshot.snapshot_name))
 
-
   @staticmethod
-  def get_gitlab_user(username, token, app):
+  def get_gitlab_users(username, token, app):
     request_url = "%s/users?username=%s&private_token=%s" % (get_info('GITLAB_API_PREFIX'), username, token)
     resp = requests.get(request_url)
     if resp.status_code >= 400:
@@ -103,11 +101,15 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
 
   @staticmethod
-  def request_gitlab_api(project_id, request_url, app, method='POST', params={}):
-    r = db.get_user_token_by_project(project_id)
+  def request_gitlab_api(principle, request_url, app, method='POST', by_principle='project_id', params={}):
+    r = None
+    if by_principle == 'username':
+      r = db.get_user_info(principle)
+    elif by_principle == 'project_id':
+      r = db.get_user_token_by_project(principle)
     if r is None:
-      app.logger.error("Failed to get token with project ID: %d", project_id)
-      raise KeeperException(404, "Failed to get token with project ID: %d" % (project_id,))
+      app.logger.error("Failed to get token with principle: %r", principle)
+      raise KeeperException(404, "Failed to get token with principle: %r" % (principle,))
     app.logger.debug("Got token: %s", r['token'])
     resp = {}
     default_headers={"PRIVATE-TOKEN": r['token']}
@@ -175,6 +177,12 @@ class KeeperManager:
     app.logger.debug("Comment on issue to project ID: %d on issue IID: %d, with message: %s", project_id, issue_iid, message)
     request_url = "%s/projects/%d/issues/%d/notes?body=%s" % (get_info('GITLAB_API_PREFIX'), project_id, issue_iid, message)
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
+
+  @staticmethod
+  def comment_on_merge_request(username, project_id, mr_iid, message, app):
+    app.logger.debug("Comment on MR to project ID: %d on IID: %d, with message: %s", project_id, mr_iid, message)
+    request_url = "%s/projects/%d/merge_requests/%d/notes?body=%s" % (get_info('GITLAB_API_PREFIX'), project_id, mr_iid, message)
+    return KeeperManager.request_gitlab_api(username, request_url, app, by_principle="username")
 
   @staticmethod
   def post_issue_to_assignee(project_id, title, description, label, assignee, app):
@@ -276,33 +284,29 @@ class KeeperManager:
 
   @staticmethod
   def add_user(username, token, app):
-    r = KeeperManager.get_gitlab_user(username, token, app)
-    if r is None:
-      raise KeeperException(404, "No user id found with provided username: %s" % username)
-    user = User(r['user_id'], r['username'])
     r = db.check_user(username, app)
-    if r['cnt'] == 0:
-      app.logger.debug("user: %s" % user)
-      db.insert_user(user, app)
-    else:
-      app.logger.error("User: %s already exists." % (user.username,))
-      raise KeeperException(409, "User: %s already exists." % (user.username,))
+    if r['cnt'] > 0:
+      app.logger.error("User: %s already exists." % (username,))
+      raise KeeperException(409, "User: %s already exists." % (username,))
+    users = KeeperManager.get_gitlab_users(username, token, app)
+    if len(users) == 0:
+      raise KeeperException(404, "No user id found with provided username: %s" % username)
+    user = users[0]
+    db.insert_user(User(user['id'], username, token), app)
 
   @staticmethod
   def add_project(username, project_name, app):
+    r = db.check_user_project(username, project_name, app)
+    if r['cnt'] > 0:
+      app.logger.error("User: %s with project: %s already exists." % (username, project_name))
+      raise KeeperException(409, "User: %s with project: %s already exists." % (username, project_name))
     project = KeeperManager.resolve_project(username, project_name, app)
     app.logger.debug("Obtained project: %s in user creation with project." % project)
-    user = KeeperManager.resolve_user(username, app)
-    r = db.check_user_project(username, project.project_name, app)
-    if r['cnt'] == 0:
-      app.logger.debug("user: %s" % user)
-      app.logger.debug("project: %s" % project)
-      db.insert_project(project, app)
-      db.insert_user_project(user, project, app)
-    else:
-      app.logger.error("User: %s with project: %s already exists." % (user.username, project.project_name))
-      raise KeeperException(409, "User: %s with project: %s already exists." % (user.username, project.project_name))
-
+    user = KeeperManager.resolve_user(username, app)   
+    app.logger.debug("user: %s" % user)
+    db.insert_project(project, app)
+    db.insert_user_project(user, project, app)
+      
   @staticmethod
   def post_issue_per_sonarqube(sonarqube_token, sonarqube_project_name, app):
     resp = KeeperManager.search_sonarqube_issues(sonarqube_token, sonarqube_project_name, app)
@@ -333,3 +337,17 @@ class KeeperManager:
 
       db.insert_issue_hash_with_user(user["user_id"], issue["hash"], app)
       KeeperManager.post_issue_to_assignee(project.project_id, title, description, label, username, app)
+
+  @staticmethod
+  def get_note_template(name):
+    r = db.get_note_template(name)
+    if r is None:
+      raise KeeperException(404, "Cannot find note template with name: %s" % (name,))
+    return NoteTemplate(r["template_name"], r["template_content"])
+  
+  @staticmethod
+  def render_note_with_template(content, **kwargs):
+    p = re.compile(r"\[(?P<tag>[^\]]+)\]")
+    url_prefix = parse.urljoin(get_info("NGINX_PROXY"), "static")
+    content = p.sub("%s/\g<tag>" % url_prefix, content)
+    return Template(content).render(**kwargs)
