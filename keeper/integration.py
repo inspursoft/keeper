@@ -49,13 +49,8 @@ def issue():
   username = request.args.get('username', None)
   if username is None:
     return abort(400, "Username is required.")
-  ref = request.args.get('ref', None)
-  if ref is None:
-    ref = default_ref
-  open_branch_prefix = request.args.get('open_branch_prefix', None)
-  if open_branch_prefix is None:
-    open_branch_prefix = default_open_branch_prefix
-
+  ref = request.args.get('ref', default_ref)
+  open_branch_prefix = request.args.get('open_branch_prefix', default_open_branch_prefix)
   current_app.logger.info("Current ref branch is: %s", ref)
   current_app.logger.info("Current openning branch prefix is: %s", open_branch_prefix)
   data = request.get_json()
@@ -127,8 +122,10 @@ def issue_per_sonarqube():
   sonarqube_project_name = request.args.get("sonarqube_project_name", None)
   if sonarqube_token is None:
     return abort(400, "SonarQube project name is required.")
+  severities = request.args.get("severities", "CRITICAL")
+  created_in_last = request.args.get("created_in_last", "10d")
   try:
-    KeeperManager.post_issue_per_sonarqube(sonarqube_token, sonarqube_project_name, current_app)
+    KeeperManager.post_issue_per_sonarqube(sonarqube_token, sonarqube_project_name, severities, created_in_last, current_app)
     return jsonify(message="Successful assigned issue to project: %s" % (sonarqube_project_name))
   except KeeperException as e:
     current_app.logger.error(e)
@@ -192,6 +189,7 @@ def note_issue(project_name, iid):
   template_name = request.args.get("name", None)
   if template_name is None:
     return abort(400, "The name of template is required.")
+  issuer = request.args.get("issuer", default_issuer)
   entries = {}
   try:
     entries = request.get_json()
@@ -202,12 +200,12 @@ def note_issue(project_name, iid):
     current_app.logger.debug("Template before rendered: %s", template.content)
     message = KeeperManager.render_note_with_template(template.content, **entries)
     current_app.logger.debug("Rendered template content: %s", template.content)
-    project = KeeperManager.resolve_project(default_issuer, project_name, current_app)
+    project = KeeperManager.resolve_project(issuer, project_name, current_app)
     try:
-      KeeperManager.comment_on_merge_request(default_issuer, project.project_id, iid, message, current_app)
+      KeeperManager.comment_on_merge_request(issuer, project.project_id, iid, message, current_app)
     except KeeperException as e0:
       if e0.code == 404:
-        KeeperManager.comment_on_issue(default_issuer, project.project_id, iid, message, current_app)
+        KeeperManager.comment_on_issue(issuer, project.project_id, iid, message, current_app)
     return jsonify(message="Successful commented notes on issue %d to the repo: %s" % (iid, project.project_name))
   except KeeperException as e:
     current_app.logger.error(e)
