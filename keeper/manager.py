@@ -348,6 +348,5 @@ class KeeperManager:
   @staticmethod
   def render_note_with_template(content, **kwargs):
     p = re.compile(r"\[(?P<tag>[^\]]+)\]")
-    url_prefix = parse.urljoin(get_info("NGINX_PROXY"), "static")
-    content = p.sub("%s/\g<tag>" % url_prefix, content)
+    content = p.sub("%s/\g<tag>" % get_info("NGINX_PROXY"), content)
     return Template(content).render(**kwargs)

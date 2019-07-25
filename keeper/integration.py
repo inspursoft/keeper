@@ -76,7 +76,7 @@ def issue():
   try:
     branch_name = KeeperManager.resolve_branch_name(s_title[len(open_branch_prefix):])
     KeeperManager.create_branch(project_id, branch_name, ref, current_app)
-    KeeperManager.comment_on_issue(project_id, issue_iid, "Branch: %s has been created." % (branch_name,), current_app)
+    KeeperManager.comment_on_issue(username, project_id, issue_iid, "Branch: %s has been created." % (branch_name,), current_app)
     return jsonify(message="Successful created branch with issue.")
   except KeeperException as e:
     current_app.logger.error(e)
