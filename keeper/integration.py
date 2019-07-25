@@ -180,12 +180,13 @@ def issue_open_peer():
 
 default_issuer = "reporter"
 
-@bp.route("/notes/<path:project_name>/<int:iid>", methods=["POST"])
-def note_issue(project_name, iid):
+@bp.route("/notes/<path:project_name>", methods=["POST"])
+def note_on_commit(project_name):
   if project_name is None:
     return abort(400, "Project name is required.")
-  if iid is None:
-    return abort(400, "Issue ID is required.")
+  commit_sha = request.args.get("sha", None)
+  if commit_sha is None:
+    return abort(400, "Commit SHA is required.")
   template_name = request.args.get("name", None)
   if template_name is None:
     return abort(400, "The name of template is required.")
@@ -201,12 +202,8 @@ def note_issue(project_name, iid):
     message = KeeperManager.render_note_with_template(template.content, **entries)
     current_app.logger.debug("Rendered template content: %s", template.content)
     project = KeeperManager.resolve_project(issuer, project_name, current_app)
-    try:
-      KeeperManager.comment_on_merge_request(issuer, project.project_id, iid, message, current_app)
-    except KeeperException as e0:
-      if e0.code == 404:
-        KeeperManager.comment_on_issue(issuer, project.project_id, iid, message, current_app)
-    return jsonify(message="Successful commented notes on issue %d to the repo: %s" % (iid, project.project_name))
+    KeeperManager.comment_on_commit(issuer, project.project_id, commit_sha, message, current_app)
+    return jsonify(message="Successful commented notes on commit: %s to the repo: %s" % (commit_sha, project.project_name))
   except KeeperException as e:
     current_app.logger.error(e)
     return abort(e.code, e.message)

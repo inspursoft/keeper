@@ -185,6 +185,12 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(username, request_url, app, by_principle="username")
 
   @staticmethod
+  def comment_on_commit(username, project_id, commit_sha, message, app):
+    app.logger.debug("Comment on commit to project ID: %d on commit SHA: %s, with message: %s", project_id, commit_sha, message)
+    request_url = "%s/projects/%d/repository/commits/%s/comments" % (get_info('GITLAB_API_PREFIX'), project_id, commit_sha)
+    return KeeperManager.request_gitlab_api(username, request_url, app, by_principle="username", params = {"note": message})
+
+  @staticmethod
   def post_issue_to_assignee(project_id, title, description, label, assignee, app):
     app.logger.debug("Post issue to project ID: %d with title: %s, label: %s, description: %s ", project_id, title, description, label)
     r = KeeperManager.resolve_user(assignee, app)
