@@ -137,6 +137,7 @@ class KeeperManager:
   def search_sonarqube_issues(sonarqube_token, sonarqube_project_name, app, severities="CRITICAL", created_in_last="10d"):
     app.logger.debug("Request Sonarqube issues for project: %s", sonarqube_project_name)
     request_url = "%s/issues/search?componentKeys=%s&severities=%s&createdInLast=%s" % (get_info('SONARQUBE_API_PREFIX'), sonarqube_project_name, severities, created_in_last)
+    app.logger.debug("Request Sonarqube API: %s", request_url)
     return KeeperManager.request_sonarqube_api(sonarqube_token, request_url, app)
 
   @staticmethod
@@ -193,8 +194,8 @@ class KeeperManager:
   @staticmethod
   def post_issue_to_assignee(project_id, title, description, label, assignee, app):
     app.logger.debug("Post issue to project ID: %d with title: %s, label: %s, description: %s ", project_id, title, description, label)
-    r = KeeperManager.resolve_user(assignee, app)
-    request_url = "%s/projects/%d/issues?title=%s&description=%s&labels=%s&assignee_ids=%d" % (get_info('GITLAB_API_PREFIX'), project_id, title, description, label, r['user_id'])
+    user = KeeperManager.resolve_user(assignee, app)
+    request_url = "%s/projects/%d/issues?title=%s&description=%s&labels=%s&assignee_ids=%d" % (get_info('GITLAB_API_PREFIX'), project_id, title, description, label, user.user_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
 
   @staticmethod
@@ -324,7 +325,7 @@ class KeeperManager:
       user = KeeperManager.resolve_user(username, app)
       r = db.check_issue_exists(user.user_id, issue["hash"])
       if r["cnt"] > 0:
-        raise KeeperException(409, "User ID: %d with issue hash: %s already exists." % (user["user_id"], issue["hash"]))
+        raise KeeperException(409, "User ID: %d with issue hash: %s already exists." % (user.user_id, issue["hash"]))
         continue
       
       title = issue["message"]
