@@ -10,5 +10,6 @@ setup(
     'flask',
     'requests',
     'paramiko',
+    'scp',
   ],
 )

@@ -11,7 +11,7 @@ from threading import Thread
 from keeper.model import User, Project, VM, Snapshot, Runner
 from . import get_info
 
-import paramiko
+from keeper.util import SSHUtil
 
 bp = Blueprint("handler", __name__, url_prefix="/api/v1")
 
@@ -53,7 +53,7 @@ def snapshot():
       manager.toggle_runner('false')
     snapshot_name = manager.get_vm_snapshot_name(vm_name)
     filepath = os.path.join(os.path.join(current_app.instance_path, '%s-restore-snapshot.sh' % target))
-    current_app.logger.info(exec_script(current_app, filepath, vm_runner['vm_id'], snapshot_name))
+    SSHUtil.exec_script(current_app, filepath, vm_runner['vm_id'], snapshot_name)
   except KeeperException as e:
     current_app.logger.error(e)
     return abort(e.message, "Failed to execute script file: %s" % '%s-restore-snapshot.sh' % target)
@@ -61,20 +61,6 @@ def snapshot():
     if manager.get_runner_id() is not None:
       manager.toggle_runner('true')
   return jsonify(message="%s has been executed with restore action." % vm_name)
-  
-def exec_script(app, filepath, *args):
-  try:
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(hostname=get_info('HOST'), username=get_info('USERNAME'), password=get_info('PASSWORD'))
-    app.logger.debug('{} {}'.format(filepath, ' '.join(args)))
-    _, stdout, _ = client.exec_command('{} {}'.format(filepath, ' '.join(args)))
-    result = stdout.read().decode()   
-    return result
-  except Exception as e:
-    return 'Error occurred: {}'.format(e)
-  finally:
-    client.close()
 
 @bp.route('/user', methods=['POST'])
 def add_user():

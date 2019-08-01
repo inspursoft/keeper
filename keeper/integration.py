@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 import tarfile
 
 from keeper.manager import *
-from . import get_info
+from keeper import get_info
 import ast
 
 bp = Blueprint("integration", __name__ ,url_prefix="/api/v1")

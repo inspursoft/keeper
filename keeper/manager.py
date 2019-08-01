@@ -4,10 +4,11 @@ from requests.auth import HTTPBasicAuth
 from keeper.model import *
 import keeper.db as db
 from keeper import get_info
+from keeper.util import TemplateUtil, SSHUtil
 
 import re
-from jinja2 import Template
 from urllib import parse
+import os
 
 class KeeperException(Exception):
   def __init__(self, code, message):
@@ -59,6 +60,20 @@ class KeeperManager:
     self.current.logger.debug("Requested URL: %s with status: %d", dispatch_url, resp.status_code)
     if resp.status_code >= 400:
       raise KeeperException(resp.status_code, 'Failed to request with URL: %s' % dispatch_url)
+  
+  def generate_vagrantfile(self, **vm_conf):
+    vagrant_file_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
+    TemplateUtil.render_file(vagrant_file_path, "Vagrantfile", **vm_conf)
+
+  def copy_vm_files(self):
+    local_vagrantfile_path = os.path.join(get_info("LOCAL_OUTPUT"), "Vagrantfile")
+    remote_dest_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
+    SSHUtil.secure_copy(self.current, get_info("VM_SRC_PATH"), remote_dest_path)
+    SSHUtil.secure_copyfile(self.current, local_vagrantfile_path, remote_dest_path)
+    
+  def create_vm(self):
+    vm_path =os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
+    return SSHUtil.exec_script(self.current, "cd %s && vagrant" % vm_path, "up")
 
   @staticmethod
   def add_vm_snapshot(vm, snapshot, app):
@@ -356,4 +371,4 @@ class KeeperManager:
   def render_note_with_template(content, **kwargs):
     p = re.compile(r"\[(?P<tag>[^\]]+)\]")
     content = p.sub("%s/\g<tag>" % get_info("NGINX_PROXY"), content)
-    return Template(content).render(**kwargs)
+    return TemplateUtil.render_simple(content, **kwargs)
