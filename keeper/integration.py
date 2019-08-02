@@ -122,7 +122,7 @@ def issue_per_sonarqube():
   sonarqube_project_name = request.args.get("sonarqube_project_name", None)
   if sonarqube_token is None:
     return abort(400, "SonarQube project name is required.")
-  severities = request.args.get("severities", "CRITICAL")
+  severities = request.args.get("severities", "CRITICAL,BLOCKER")
   created_in_last = request.args.get("created_in_last", "10d")
   try:
     KeeperManager.post_issue_per_sonarqube(sonarqube_token, sonarqube_project_name, severities, created_in_last, current_app)
