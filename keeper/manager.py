@@ -342,7 +342,7 @@ class KeeperManager:
       project = KeeperManager.resolve_project(username, assignee_project, app)
       app.logger.debug("Resolved project with path: {}".format(project))
 
-      db.insert_issue_hash_with_user(user["user_id"], issue["hash"], app)
+      db.insert_issue_hash_with_user(user.user_id, issue["hash"], app)
       KeeperManager.post_issue_to_assignee(project.project_id, title, description, label, username, app)
 
   @staticmethod
