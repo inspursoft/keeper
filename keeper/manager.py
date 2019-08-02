@@ -62,7 +62,7 @@ class KeeperManager:
       raise KeeperException(resp.status_code, 'Failed to request with URL: %s' % dispatch_url)
   
   def generate_vagrantfile(self, **vm_conf):
-    vagrant_file_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
+    vagrant_file_path = os.path.join(get_info("LOCAL_OUTPUT"), self.vm_name)
     TemplateUtil.render_file(vagrant_file_path, "Vagrantfile", **vm_conf)
 
   def copy_vm_files(self):
@@ -70,10 +70,27 @@ class KeeperManager:
     remote_dest_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
     SSHUtil.secure_copy(self.current, get_info("VM_SRC_PATH"), remote_dest_path)
     SSHUtil.secure_copyfile(self.current, local_vagrantfile_path, remote_dest_path)
-    
+  
+  def __base_vagrant_operation(self, *operation):
+    vm_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
+    return SSHUtil.exec_script(self.current, "cd %s && vagrant" % vm_path, *operation)
+
   def create_vm(self):
-    vm_path =os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
-    return SSHUtil.exec_script(self.current, "cd %s && vagrant" % vm_path, "up")
+    return self.__base_vagrant_operation("up")
+
+  def get_global_status(self):
+    return self.__base_vagrant_operation("global-status")
+
+  def get_vm_info(self):
+    raw_output = self.get_global_status()
+    vm_global_status = VMGlobalStatus.parse(raw_output, self.vm_name)
+    if vm_global_status is None:
+      raise KeeperException(404, "VM: %s does not exist." % self.vm_name)
+    return vm_global_status
+  
+  def force_delete_vm(self):
+    vm_info = self.get_vm_info()
+    return self.__base_vagrant_operation("destroy", "-f", vm_info.id)
 
   @staticmethod
   def add_vm_snapshot(vm, snapshot, app):

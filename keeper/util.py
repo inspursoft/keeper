@@ -2,6 +2,7 @@ from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 from jinja2 import Environment, PackageLoader, Template
 import os
+from threading import Thread
 from keeper import get_info
 
 class SSHUtil:
@@ -55,14 +56,31 @@ class TemplateUtil:
   @classmethod
   def render_file(cls, dest_path, template_name, **kwargs):
     cls._get_template(template_name)
-    output_path = get_info("LOCAL_OUTPUT")
     try:
-      os.makedirs(output_path)
+      os.makedirs(dest_path)
     except OSError:
       pass
-    with open(os.path.join(output_path, template_name), "w") as f:
+    with open(os.path.join(dest_path, template_name), "w") as f:
       f.write(cls.template.render(**kwargs))
 
   @classmethod
   def render_simple(cls, template, **kwargs):
     return Template(template).render(**kwargs)
+
+class SubTaskUtil:
+
+  @classmethod
+  def set(cls, current_app, callback):
+    cls.current = current_app._get_current_object()
+    cls.callback = callback
+    return cls
+
+  @classmethod
+  def subtask(cls):
+    with cls.current.app_context():
+      cls.callback()
+    return cls
+  
+  @classmethod
+  def start(cls):
+    Thread(target=SubTaskUtil.subtask).start()

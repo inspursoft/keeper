@@ -4,6 +4,7 @@
 # VM = namedtuple('VM', ['vm_id', 'vm_name', 'target', 'keeper_url'])
 # Snapshot = namedtuple('Snapshot', ['vm_id', 'snapshot_name'])
 # Runner = namedtuple('Runner', ['runner_id', 'runner_tag'])
+import re
 
 class User:
   __slots__ = 'user_id', 'username', 'token'
@@ -53,3 +54,31 @@ class NoteTemplate:
     
   def __str__(self):
     return "template name: %s, content: %s" % (self.name, self.content)
+
+class VMGlobalStatus:
+  __slots__ = "id", "name", "provider", "status", "directory"
+  @classmethod
+  def parse(cls, raw_content, name):
+    p = re.compile(r'''
+      (?![\-]+\n)
+      (?P<id>\w{7})\s+
+      (?P<name>\w+)\s+
+      (?P<provider>\w+)\s+
+      (?P<status>\w+)\s+
+      (?P<directory>[\w/-]+)\s+
+      (?=\n)''',re.VERBOSE)
+    for m in p.finditer(raw_content):
+      vm_global_status = VMGlobalStatus()
+      vm_global_status.id = m.group("id")
+      vm_global_status.name = m.group("name")
+      vm_global_status.provider = m.group("provider")
+      vm_global_status.status = m.group("status")
+      vm_global_status.directory = m.group("directory")
+      vm_name = vm_global_status.directory[vm_global_status.directory.rindex("/")+1:]
+      if vm_name == name:
+        return vm_global_status
+    return None
+
+  def __str__(self):
+    return "id: {}, name: {}, provider: {}, status: {}, directory: {}".format(
+      self.id, self.name, self.provider, self.status, self.directory)
