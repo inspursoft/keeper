@@ -73,6 +73,12 @@ Vagrant.configure("2") do |config|
      sudo gitlab-runner install --user=root 
      sudo gitlab-runner start
 
+     sudo gitlab-runner register --name "custom-runner" \
+           --url="http://10.110.25.227" \
+           --registration-token="sD64gDmJ4VKjKj8vkDqN" \
+           --executor="shell" \
+           --non-interactive --tag-list "custom-runner-vm"
+
      cd /vagrant
      sudo dpkg -i *.deb
      sudo cp /vagrant/daemon.json /etc/docker 

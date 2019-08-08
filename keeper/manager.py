@@ -9,6 +9,7 @@ from keeper.util import TemplateUtil, SSHUtil
 import re
 from urllib import parse
 import os
+from json.decoder import JSONDecodeError
 
 class KeeperException(Exception):
   def __init__(self, code, message):
@@ -66,7 +67,7 @@ class KeeperManager:
     TemplateUtil.render_file(vagrant_file_path, "Vagrantfile", **vm_conf)
 
   def copy_vm_files(self):
-    local_vagrantfile_path = os.path.join(get_info("LOCAL_OUTPUT"), "Vagrantfile")
+    local_vagrantfile_path = os.path.join(get_info("LOCAL_OUTPUT"), self.vm_name, "Vagrantfile")
     remote_dest_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
     SSHUtil.secure_copy(self.current, get_info("VM_SRC_PATH"), remote_dest_path)
     SSHUtil.secure_copyfile(self.current, local_vagrantfile_path, remote_dest_path)
@@ -127,6 +128,28 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
 
   @staticmethod
+  def resolve_runner(project_id, runner_name, app):
+    runners = KeeperManager.get_gitlab_runners(project_id, app)
+    runner = Runner(runner_name)
+    for r in runners:
+      if r['description'] == runner_name:
+        runner.runner_id = r['id']
+        return runner
+    raise KeeperException(404, "No runner id found with provided tag: %s" % runner_name)
+
+  @staticmethod
+  def update_runner(project_id, runner_id, updates, app):
+    app.logger.debug("Update runner with project ID: %d, runner ID: %d and updates: %s", project_id, runner_id, updates)
+    request_url = "%s/runners/%d" % (get_info('GITLAB_API_PREFIX'), runner_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method='PUT', params=updates)
+
+  @staticmethod
+  def remove_runner(project_id, runner_id, app):
+    app.logger.debug("Remove runner with project ID: %d and runner ID: %d", project_id, runner_id)
+    request_url = "%s/runners/%d" % (get_info('GITLAB_API_PREFIX'), runner_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method='DELETE')
+
+  @staticmethod
   def get_repo_commit_status(project_id, commit_id, app):
     app.logger.debug("Get repo with project ID: %d and commit ID: %d", project_id, commit_id)
     request_url = "%s/projects/%d/repository/commits/%s/statuses" % (get_info('GITLAB_API_PREFIX'), project_id, commit_id)
@@ -143,7 +166,7 @@ class KeeperManager:
       app.logger.error("Failed to get token with principle: %r", principle)
       raise KeeperException(404, "Failed to get token with principle: %r" % (principle,))
     app.logger.debug("Got token: %s", r['token'])
-    resp = {}
+    resp = None
     default_headers={"PRIVATE-TOKEN": r['token']}
     if method == 'POST':
       resp = requests.post(request_url, headers=default_headers, params=params)
@@ -151,10 +174,15 @@ class KeeperManager:
       resp = requests.get(request_url, headers=default_headers, params=params)
     elif method == 'PUT':
       resp = requests.put(request_url, headers=default_headers, params=params)
+    elif method == 'DELETE':
+      resp = requests.delete(request_url, headers=default_headers, params=params)
     if resp.status_code >= 400:
       app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
       raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
-    return resp.json()
+    try:
+      return resp.json()
+    except JSONDecodeError as e:
+      pass
 
   @staticmethod
   def request_sonarqube_api(sonarqube_token, request_url, app):
@@ -271,31 +299,18 @@ class KeeperManager:
     token = KeeperManager.resolve_token(username, app)
     projects = KeeperManager.get_gitlab_projects(token, app)
     project = Project(project_name)
-    found = False
     for p in projects:
       if p['path_with_namespace'] == project_name:
         project.project_id = p['id']
-        found = True
-        break
-    if not found:
-      raise KeeperException(404, "No project id found with provided project name: %s" % project_name)
-    app.logger.debug("Obtained project: %s in project runner registration." % project)    
-    return project
+        app.logger.debug("Obtained project: %s in project runner registration." % project) 
+        return project
+    raise KeeperException(404, "No project id found with provided project name: %s" % project_name)
 
   @staticmethod
   def register_project_runner(username, project_name, runner_name, vm, snapshot, app):
     token = KeeperManager.resolve_token(username, app)
     project = KeeperManager.resolve_project(username, project_name, app)
-    runners = KeeperManager.get_gitlab_runners(project.project_id, app)
-    runner = Runner(runner_name)
-    found = False
-    for e in runners:
-      if e['description'] == runner_name:
-        runner.runner_id = e['id']
-        found = True
-        break
-    if not found:
-      raise KeeperException(404, "No runner id found with provided tag: %s" % runner_name)
+    runner = KeeperManager.resolve_runner(project.project_id, runner_name, app)
     app.logger.debug("Obtained runner: %s in project runner registration." % runner)    
     
     r = db.check_project_runner(project_name, vm.vm_name, runner.runner_id, snapshot.snapshot_name, app)

@@ -134,3 +134,28 @@ def unregister_runner():
   except KeeperException as e:
     return abort(e.code, e.message)
   return jsonify(message="Successful unregister project runner.")
+
+@bp.route('/runners', methods=['PUT', 'DELETE'])
+def manipulate_runner():
+  repo_name = request.args.get('repo_name', None)
+  if repo_name is None:
+    return abort(400, 'Repo name is required.')
+  runner_name = request.args.get('runner_name', None)
+  if runner_name is None:
+    return abort(400, 'Runner name is required.')
+  sub_index = repo_name.index('/')
+  if sub_index == -1:
+    return abort(400, 'Username is missing in repo name.')
+  username = repo_name[:sub_index]
+  try:
+    project = KeeperManager.resolve_project(username, repo_name, current_app)
+    runner = KeeperManager.resolve_runner(project.project_id, runner_name, current_app)
+    if request.method == 'PUT':
+      KeeperManager.update_runner(project.project_id, runner.runner_id, {'run_untagged': True, 'locked': True}, current_app)
+      return jsonify(message="Successful updated runner: %s from repo: %s" % (runner_name, repo_name))
+    elif request.method == 'DELETE':
+      KeeperManager.remove_runner(project.project_id, runner.runner_id, current_app)
+      return jsonify(message="Successful removed runner: %s from repo: %s" % (runner_name, repo_name))
+  except KeeperException as e:
+    return abort(e.code, e.message)
+  

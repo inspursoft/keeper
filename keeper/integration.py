@@ -260,3 +260,8 @@ def upload_artifacts():
   with tarfile.open(source_path) as tf:
     tf.extractall(target_path)
   return "Successful uploaded and processed artifacts."
+
+@bp.route("/runners", methods=["POST"])
+def prepare_runner():
+  current_app.logger.debug(request.get_json())
+  return "Success"
