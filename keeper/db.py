@@ -87,6 +87,15 @@ def get_project_runner_by_name(runner_name):
     ''', (runner_name,)
   ).fetchall()
 
+def get_runner_token(username, project_name):
+  return get_db().execute(
+    '''select p.project_id, p.project_name, p.runner_token from project p
+        left join user_project up on up.project_id = p.project_id
+        left join user u on u.user_id = up.user_id
+        where u.username = ? and p.project_name = ?
+    ''', (username, project_name)
+  ).fetchone()
+
 def get_vm_snapshot(vm_name):
   return get_db().execute(
     '''select v.vm_id, v.vm_name, v.target, v.keeper_url, vs.snapshot_name from vm v 
@@ -190,3 +199,6 @@ def insert_issue_hash_with_user(user_id, issue_hash, app):
 
 def insert_note_template(name, template, app):
   proxied_execute(app, 'replace into note_template (template_name, template_content) values (?, ?)', (name, template))
+
+def update_runner_token(runner_token, project_id, app):
+  proxied_execute(app, 'update project set runner_token = ? where project_id = ?', (runner_token, project_id))

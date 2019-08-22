@@ -17,7 +17,8 @@ create table user (
 create table project (
   id integer primary key autoincrement,
   project_id integer unique not null,
-  project_name text not null
+  project_name text not null,
+  runner_token text
 );
 
 create table runner (

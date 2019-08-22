@@ -73,22 +73,23 @@ Vagrant.configure("2") do |config|
      sudo gitlab-runner install --user=root 
      sudo gitlab-runner start
 
-     sudo gitlab-runner register --name "custom-runner" \
-           --url="http://10.110.25.227" \
-           --registration-token="sD64gDmJ4VKjKj8vkDqN" \
+     sudo gitlab-runner register --name "{{ runner_name }}" \
+           --url="{{ gitlab_url }}" \
+           --registration-token="{{ runner_token }}" \
            --executor="shell" \
-           --non-interactive --tag-list "custom-runner-vm"
+           --non-interactive --tag-list "{{ runner_tag }}"
 
      cd /vagrant
      sudo dpkg -i *.deb
-     sudo cp /vagrant/daemon.json /etc/docker 
+     sudo cp /vagrant/daemon.json /etc/docker
+     sudo systemctl daemon-reload
      sudo systemctl start docker
      sudo systemctl restart docker
 
      sudo cp /vagrant/docker-compose /usr/bin
 
      sudo apt-get -qqy install make
-     sudo route add default gw 10.110.27.254
      sudo route del default gw 10.0.2.2 
+     sudo route add default gw 10.110.27.254
    SHELL
 end

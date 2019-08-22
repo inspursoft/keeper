@@ -50,7 +50,7 @@ class KeeperManager:
     return db.get_vm_snapshot(vm_name)['snapshot_name']
 
   def toggle_runner(self, status):
-    request_url = "%s/runners/%d?private_token=%s" % (get_info('GITLAB_API_PREFIX'), self.get_runner_id(), self.get_token())
+    request_url = "%s/runners/%d?private_token=%s" % (KeeperManager.get_gitlab_api_url(), self.get_runner_id(), self.get_token())
     resp = requests.put(request_url, data={'active': status})
     self.current.logger.debug("Requested URL: %s to toggle runner status as %s", request_url, status)
     if resp.status_code >= 400:
@@ -62,15 +62,22 @@ class KeeperManager:
     if resp.status_code >= 400:
       raise KeeperException(resp.status_code, 'Failed to request with URL: %s' % dispatch_url)
   
-  def generate_vagrantfile(self, **vm_conf):
+  def generate_vagrantfile(self, runner_token, vm_conf):
+    if not vm_conf:
+      raise KeeperException(400, 'Missing VM configurations.')
+    vm_conf["gitlab_url"] = get_info("GITLAB_URL")
+    vm_conf["runner_name"] = self.vm_name
+    vm_conf["runner_token"] = runner_token
     vagrant_file_path = os.path.join(get_info("LOCAL_OUTPUT"), self.vm_name)
-    TemplateUtil.render_file(vagrant_file_path, "Vagrantfile", **vm_conf)
+    TemplateUtil.render_file(vagrant_file_path, "Vagrantfile", vm_conf)
 
   def copy_vm_files(self):
     local_vagrantfile_path = os.path.join(get_info("LOCAL_OUTPUT"), self.vm_name, "Vagrantfile")
     remote_dest_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
-    SSHUtil.secure_copy(self.current, get_info("VM_SRC_PATH"), remote_dest_path)
+    # SSHUtil.secure_copy(self.current, get_info("VM_SRC_PATH"), remote_dest_path)
+    SSHUtil.exec_script(self.current, "cp -R %s %s" % (get_info("VM_SRC_PATH"), remote_dest_path))
     SSHUtil.secure_copyfile(self.current, local_vagrantfile_path, remote_dest_path)
+    
   
   def __base_vagrant_operation(self, *operation):
     vm_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
@@ -94,6 +101,10 @@ class KeeperManager:
     return self.__base_vagrant_operation("destroy", "-f", vm_info.id)
 
   @staticmethod
+  def get_gitlab_api_url():
+    return parse.urljoin(get_info('GITLAB_URL'), get_info('GITLAB_API_PREFIX'))
+
+  @staticmethod
   def add_vm_snapshot(vm, snapshot, app):
     r = db.check_vm_snapshot(vm, snapshot, app)
     if r['cnt'] == 0:
@@ -105,7 +116,7 @@ class KeeperManager:
 
   @staticmethod
   def get_gitlab_users(username, token, app):
-    request_url = "%s/users?username=%s&private_token=%s" % (get_info('GITLAB_API_PREFIX'), username, token)
+    request_url = "%s/users?username=%s&private_token=%s" % (KeeperManager.get_gitlab_api_url(), username, token)
     resp = requests.get(request_url)
     if resp.status_code >= 400:
       app.logger.error("Failed to request URL: %s with status code: %d", request_url, resp.status_code)
@@ -114,7 +125,7 @@ class KeeperManager:
 
   @staticmethod
   def get_gitlab_projects(token, app):
-    request_url = "%s/projects?private_token=%s" % (get_info('GITLAB_API_PREFIX'), token)
+    request_url = "%s/projects?private_token=%s" % (KeeperManager.get_gitlab_api_url(), token)
     resp = requests.get(request_url)
     if resp.status_code >= 400:
       app.logger.error("Failed to request URL: %s with status code: %d", request_url, resp.status_code)
@@ -124,7 +135,7 @@ class KeeperManager:
   @staticmethod
   def get_gitlab_runners(project_id, app):
     app.logger.debug("Get gitlab runner with project ID: %d", project_id)
-    request_url = "%s/projects/%d/runners" % (get_info('GITLAB_API_PREFIX'), project_id)
+    request_url = "%s/projects/%d/runners" % (KeeperManager.get_gitlab_api_url(), project_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
 
   @staticmethod
@@ -140,19 +151,19 @@ class KeeperManager:
   @staticmethod
   def update_runner(project_id, runner_id, updates, app):
     app.logger.debug("Update runner with project ID: %d, runner ID: %d and updates: %s", project_id, runner_id, updates)
-    request_url = "%s/runners/%d" % (get_info('GITLAB_API_PREFIX'), runner_id)
+    request_url = "%s/runners/%d" % (KeeperManager.get_gitlab_api_url(), runner_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='PUT', params=updates)
 
   @staticmethod
   def remove_runner(project_id, runner_id, app):
     app.logger.debug("Remove runner with project ID: %d and runner ID: %d", project_id, runner_id)
-    request_url = "%s/runners/%d" % (get_info('GITLAB_API_PREFIX'), runner_id)
+    request_url = "%s/runners/%d" % (KeeperManager.get_gitlab_api_url(), runner_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='DELETE')
 
   @staticmethod
   def get_repo_commit_status(project_id, commit_id, app):
     app.logger.debug("Get repo with project ID: %d and commit ID: %d", project_id, commit_id)
-    request_url = "%s/projects/%d/repository/commits/%s/statuses" % (get_info('GITLAB_API_PREFIX'), project_id, commit_id)
+    request_url = "%s/projects/%d/repository/commits/%s/statuses" % (KeeperManager.get_gitlab_api_url(), project_id, commit_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
 
   @staticmethod
@@ -203,13 +214,13 @@ class KeeperManager:
   @staticmethod
   def trigger_pipeline(project_id, ref, app):
     app.logger.debug("Trigger pipeline with project_id: %d", project_id)
-    request_url = "%s/projects/%d/pipeline?ref=%s" % (get_info('GITLAB_API_PREFIX'), project_id, ref)
+    request_url = "%s/projects/%d/pipeline?ref=%s" % (KeeperManager.get_gitlab_api_url(), project_id, ref)
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
 
   @staticmethod
   def create_branch(project_id, branch_name, ref, app):
     app.logger.debug("Create branch: %s from %s with project_id: %d", branch_name, ref, project_id)
-    request_url = "%s/projects/%d/repository/branches?branch=%s&ref=%s" % (get_info('GITLAB_API_PREFIX'), project_id, branch_name, ref)
+    request_url = "%s/projects/%d/repository/branches?branch=%s&ref=%s" % (KeeperManager.get_gitlab_api_url(), project_id, branch_name, ref)
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
 
   @staticmethod
@@ -230,50 +241,50 @@ class KeeperManager:
   @staticmethod
   def get_branch(project_id, branch_name, app):
     app.logger.debug("Get branch with project ID: %d", project_id)
-    request_url = "%s/projects/%d/repository/branches/%s" % (get_info('GITLAB_API_PREFIX'), project_id, branch_name)
+    request_url = "%s/projects/%d/repository/branches/%s" % (KeeperManager.get_gitlab_api_url(), project_id, branch_name)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
 
   @staticmethod
   def comment_on_issue(username, project_id, issue_iid, message, app):
     app.logger.debug("Comment on issue to project ID: %d on issue IID: %d, with message: %s", project_id, issue_iid, message)
-    request_url = "%s/projects/%d/issues/%d/notes?body=%s" % (get_info('GITLAB_API_PREFIX'), project_id, issue_iid, message)
+    request_url = "%s/projects/%d/issues/%d/notes?body=%s" % (KeeperManager.get_gitlab_api_url(), project_id, issue_iid, message)
     return KeeperManager.request_gitlab_api(username, request_url, app, by_principle="username")
 
   @staticmethod
   def comment_on_merge_request(username, project_id, mr_iid, message, app):
     app.logger.debug("Comment on MR to project ID: %d on IID: %d, with message: %s", project_id, mr_iid, message)
-    request_url = "%s/projects/%d/merge_requests/%d/notes?body=%s" % (get_info('GITLAB_API_PREFIX'), project_id, mr_iid, message)
+    request_url = "%s/projects/%d/merge_requests/%d/notes?body=%s" % (KeeperManager.get_gitlab_api_url(), project_id, mr_iid, message)
     return KeeperManager.request_gitlab_api(username, request_url, app, by_principle="username")
 
   @staticmethod
   def comment_on_commit(username, project_id, commit_sha, message, app):
     app.logger.debug("Comment on commit to project ID: %d on commit SHA: %s, with message: %s", project_id, commit_sha, message)
-    request_url = "%s/projects/%d/repository/commits/%s/comments" % (get_info('GITLAB_API_PREFIX'), project_id, commit_sha)
+    request_url = "%s/projects/%d/repository/commits/%s/comments" % (KeeperManager.get_gitlab_api_url(), project_id, commit_sha)
     return KeeperManager.request_gitlab_api(username, request_url, app, by_principle="username", params = {"note": message})
 
   @staticmethod
   def post_issue_to_assignee(project_id, title, description, label, assignee, app):
     app.logger.debug("Post issue to project ID: %d with title: %s, label: %s, description: %s ", project_id, title, description, label)
     user = KeeperManager.resolve_user(assignee, app)
-    request_url = "%s/projects/%d/issues?title=%s&description=%s&labels=%s&assignee_ids=%d" % (get_info('GITLAB_API_PREFIX'), project_id, title, description, label, user.user_id)
+    request_url = "%s/projects/%d/issues?title=%s&description=%s&labels=%s&assignee_ids=%d" % (KeeperManager.get_gitlab_api_url(), project_id, title, description, label, user.user_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
 
   @staticmethod
   def update_issue(project_id, issue_iid, updates, app):
     app.logger.debug("Update issue to project ID: %d to issue IID: %d with changes: %s", project_id, issue_iid, updates)
-    request_url = "%s/projects/%d/issues/%d" % (get_info('GITLAB_API_PREFIX'), project_id, issue_iid)
+    request_url = "%s/projects/%d/issues/%d" % (KeeperManager.get_gitlab_api_url(), project_id, issue_iid)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method="PUT", params=updates)
 
   @staticmethod
   def get_milestone(project_id, milestone_id, app):
     app.logger.debug("Get milestone with project ID: %d with milestone ID: %d")
-    request_url = "%s/projects/%d/milestones/%d" % (get_info('GITLAB_API_PREFIX'), project_id, milestone_id)
+    request_url = "%s/projects/%d/milestones/%d" % (KeeperManager.get_gitlab_api_url(), project_id, milestone_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
 
   @staticmethod
   def get_all_milestones(project_id, params, app):
     app.logger.debug("Get all milestones with project ID: %d", project_id)
-    request_url = "%s/projects/%d/milestones" % (get_info('GITLAB_API_PREFIX'), project_id)
+    request_url = "%s/projects/%d/milestones" % (KeeperManager.get_gitlab_api_url(), project_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET', params=params)
 
   @staticmethod
@@ -307,22 +318,23 @@ class KeeperManager:
     raise KeeperException(404, "No project id found with provided project name: %s" % project_name)
 
   @staticmethod
-  def register_project_runner(username, project_name, runner_name, vm, snapshot, app):
+  def register_project_runner(username, project_name, runner_name, vm, snapshot=None, app=None):
     token = KeeperManager.resolve_token(username, app)
     project = KeeperManager.resolve_project(username, project_name, app)
     runner = KeeperManager.resolve_runner(project.project_id, runner_name, app)
     app.logger.debug("Obtained runner: %s in project runner registration." % runner)    
-    
+    if not snapshot:
+      snapshot = Snapshot(vm.vm_id, 'N/A')
     r = db.check_project_runner(project_name, vm.vm_name, runner.runner_id, snapshot.snapshot_name, app)
-    if r['cnt'] == 0:
+    if r['cnt'] > 0:
       db.insert_runner(runner, app)
       db.insert_project_runner(project, vm, runner, app)
       db.insert_vm(vm, app)
       db.insert_snapshot(snapshot, app)
     else:
-      app.logger.error("Project: %s with runner: %s, VM: %s and snapshot: %s already exists."
+      app.logger.error("Project: %s with runner: %d, VM: %s and snapshot: %s already exists."
          % (project.project_name, runner.runner_id, vm.vm_name, snapshot.snapshot_name))
-      raise KeeperException("Project: %s with runner: %s, VM: %s and snapshot: %s already exists."
+      raise KeeperException(419, "Project: %s with runner: %d, VM: %s and snapshot: %s already exists."
          % (project.project_name, runner.runner_id, vm.vm_name, snapshot.snapshot_name))
 
   @staticmethod
@@ -331,11 +343,16 @@ class KeeperManager:
     if len(rs) == 0:
       app.logger.error("Runner name: %s does not exist." % runner_name)
     for r in rs:
+      try:
+        KeeperManager.remove_runner(r['project_id'], r['runner_id'], app)
+      except KeeperException as e:
+        app.logger.error("Error occurred while removing runner via API: %s", e)
       db.delete_project_runner(r['project_id'], r['runner_id'], app)
       db.delete_runner(r['runner_id'], app)
       db.delete_vm(r['vm_id'], app)
       db.delete_snapshot(r['snapshot_name'], app)
-
+      SSHUtil.exec_script(app, "rm", '-rf', os.path.join(get_info("VM_DEST_PATH"), runner_name))
+      
   @staticmethod
   def add_user(username, token, app):
     r = db.check_user(username, app)
@@ -349,18 +366,36 @@ class KeeperManager:
     db.insert_user(User(user['id'], username, token), app)
 
   @staticmethod
+  def resolve_user_project(username, project_name, app):
+    project = KeeperManager.resolve_project(username, project_name, app)
+    app.logger.debug("Obtained project: %s in user creation with project." % project)
+    return project
+
+  @staticmethod
   def add_project(username, project_name, app):
     r = db.check_user_project(username, project_name, app)
     if r['cnt'] > 0:
       app.logger.error("User: %s with project: %s already exists." % (username, project_name))
       raise KeeperException(409, "User: %s with project: %s already exists." % (username, project_name))
-    project = KeeperManager.resolve_project(username, project_name, app)
-    app.logger.debug("Obtained project: %s in user creation with project." % project)
+    project = KeeperManager.resolve_user_project(username, project_name, app)
     user = KeeperManager.resolve_user(username, app)   
-    app.logger.debug("user: %s" % user)
+    app.logger.debug("Obtained user: %s" % user)
     db.insert_project(project, app)
     db.insert_user_project(user, project, app)
-      
+    
+  @staticmethod
+  def resolve_runner_token(username, project_name, app):
+    project = KeeperManager.resolve_user_project(username, project_name, app)
+    r = db.get_runner_token(username, project_name)
+    if not r:
+      raise KeeperException(404, 'No project runner token found with project: %s and username: %s' % (project_name, username))
+    return r['runner_token']
+
+  @staticmethod
+  def update_runner_token(username, project_name, runner_token, app):
+    project = KeeperManager.resolve_user_project(username, project_name, app)
+    db.update_runner_token(runner_token, project.project_id, app)
+
   @staticmethod
   def post_issue_per_sonarqube(sonarqube_token, sonarqube_project_name, serverties, created_in_last, app):
     resp = KeeperManager.search_sonarqube_issues(sonarqube_token, sonarqube_project_name, app, serverties, created_in_last)

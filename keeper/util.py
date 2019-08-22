@@ -54,14 +54,14 @@ class TemplateUtil:
     cls.template = env.get_template(template_name)
 
   @classmethod
-  def render_file(cls, dest_path, template_name, **kwargs):
+  def render_file(cls, dest_path, template_name, kwargs):
     cls._get_template(template_name)
     try:
       os.makedirs(dest_path)
     except OSError:
       pass
     with open(os.path.join(dest_path, template_name), "w") as f:
-      f.write(cls.template.render(**kwargs))
+      f.write(cls.template.render(kwargs))
 
   @classmethod
   def render_simple(cls, template, **kwargs):

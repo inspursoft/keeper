@@ -5,6 +5,7 @@ from flask import (
 import os
 from werkzeug.utils import secure_filename
 import tarfile
+from urllib.parse import urljoin
 
 from keeper.manager import *
 from keeper import get_info
@@ -264,4 +265,31 @@ def upload_artifacts():
 @bp.route("/runners", methods=["POST"])
 def prepare_runner():
   current_app.logger.debug(request.get_json())
-  return "Success"
+  data = request.get_json()
+  object_attr = data["object_attributes"]
+  status = object_attr["status"]
+  current_app.logger.debug("Runner with pipeline status is %s.", status)
+  if status not in ["pending"]:
+    current_app.logger.debug("Runner would not be prepared as the pipeline is %s.", status)
+    return jsonify(message="Runner would not be prepared as the pipeline was not for running.")
+  username = data["user"]["name"]
+  project_name = data["project"]["path_with_namespace"]
+  abbr_name = data["project"]["name"]
+  try:
+    vm_name = "%s-runner-%s" % (abbr_name, username)
+    vm_conf = {
+      "vm_box": get_info("VM_CONF")["VM_BOX"],
+      "vm_memory": get_info("VM_CONF")["VM_MEMORY"],
+      "vm_ip": "10.110.27.164",
+      "runner_name": vm_name,
+      "runner_tag": "%s-vm" % (vm_name),
+      "runner_token": KeeperManager.resolve_runner_token(username, project_name, current_app)
+    }
+    request_url = urljoin("http://localhost:5000", url_for("vm.vm", name=vm_name, username=username, project_name=project_name))
+    resp = requests.post(request_url, json=vm_conf)
+    message = "Requested URL: %s with status code: %d" % (request_url, resp.status_code)
+    current_app.logger.debug(message)
+    return message
+  except Exception as e:
+    current_app.logger.error("Failed to prepare runner: %s", e)
+    return abort(500, e)

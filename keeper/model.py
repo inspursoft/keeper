@@ -17,7 +17,7 @@ class User:
     return "user_id: %d, username: %s, token: %s" % (self.user_id, self.username, self.token)
 
 class Project:
-  __slots__ = 'project_id', 'project_name'
+  __slots__ = 'project_id', 'project_name', 'runner_token'
   def __init__(self, project_name):
     self.project_name = project_name
   
@@ -82,3 +82,16 @@ class VMGlobalStatus:
   def __str__(self):
     return "id: {}, name: {}, provider: {}, status: {}, directory: {}".format(
       self.id, self.name, self.provider, self.status, self.directory)
+
+class VMConf:
+  __slots__= "gitlab_url", "vm_box", "vm_memory", "vm_ip", "runner_name", "runner_tag", "runner_token"
+
+class ProjectRunner:
+  __slots__= "project_id", "runner_id"
+    
+  def __init__(self, project_id, runner_id):
+    self.project_id = project_id
+    self.runner_id = runner_id
+    
+  def __str__(self):
+    return "Project runner - project ID: %d, runner ID: %d" % (self.project_id, self.runner_id)

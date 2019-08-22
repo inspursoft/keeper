@@ -158,4 +158,19 @@ def manipulate_runner():
       return jsonify(message="Successful removed runner: %s from repo: %s" % (runner_name, repo_name))
   except KeeperException as e:
     return abort(e.code, e.message)
-  
+
+@bp.route('/projects/runners/<runner_token>', methods=['PUT'])
+def update_project_runner(runner_token=None):
+  if not runner_token:
+    return abort(400, 'Runner token is required.')
+  username = request.args.get('username', None)
+  if not username:
+    return abort(400, 'Username is required.')
+  project_name = request.args.get('project_name', None)
+  if not project_name:
+    return abort(400, 'Project name is required.')
+  try:
+    KeeperManager.update_runner_token(username, project_name, runner_token, current_app)
+    return jsonify(message="Successful updated project: %s with runner token: %s" % (project_name, runner_token))
+  except KeeperException as e:
+    return abort(e.code, e.message)

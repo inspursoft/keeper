@@ -5,6 +5,7 @@ from flask import (
 from keeper.db import get_vm
 from keeper.manager import KeeperManager, KeeperException
 from keeper.util import SubTaskUtil
+from keeper.model import VM
 
 bp = Blueprint('vm', __name__, url_prefix="/api/v1")
 
@@ -19,15 +20,36 @@ def vm():
       return abort(404, "No VM found with name: %s" % vm_name)
     return jsonify(dict(info))
   elif request.method == "POST":
-    data = request.get_json()
-    manager = KeeperManager(current_app, vm_name)
-    manager.generate_vagrantfile(vm_box=data["vm_box"], vm_ip=data["vm_ip"], vm_memory=data["vm_memory"])
-    current = current_app._get_current_object()
-    def callback():
-      manager.copy_vm_files()
-      current.logger.debug(manager.create_vm())
-    SubTaskUtil.set(current_app, callback).start()
-    return "VM: %s has being created." % vm_name
+    username = request.args.get('username', None)
+    if not username:
+      return abort(400, 'Username is required.')
+    project_name = request.args.get('project_name', None)
+    if not project_name:
+      return abort(400, 'Project name is required.')
+    vm_conf = request.get_json()
+    if 'vm_box' not in vm_conf:
+      return abort(400, 'VM box is required.')
+    if 'vm_ip' not in vm_conf:
+      return abort(400, 'VM IP is required.')
+    if 'vm_memory' not in vm_conf:
+      return abort(400, 'VM memory is required.')
+    if 'runner_tag' not in vm_conf:
+      return abort(400, 'Runner tag is required.')
+    try:
+      current = current_app._get_current_object()
+      def callback():
+        runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
+        manager = KeeperManager(current, vm_name)
+        manager.generate_vagrantfile(runner_token, vm_conf)
+        manager.copy_vm_files()
+        current.logger.debug(manager.create_vm())
+        info = manager.get_vm_info()
+        vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
+        KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
+      SubTaskUtil.set(current_app, callback).start()
+      return jsonify(message="VM: %s has being created." % vm_name)
+    except KeeperException as e:
+      return abort(e.code, e.message)
 
 @bp.route("/vm/info/<path:vm_name>", methods=["GET", "DELETE"])
 def vm_info(vm_name):
@@ -40,7 +62,13 @@ def vm_info(vm_name):
       return jsonify(vm_id=info.id, vm_name=vm_name, vm_provider=info.provider,
       vm_status=info.status, vm_directory=info.directory)
     elif request.method == "DELETE":
-      SubTaskUtil.set(current_app, manager.force_delete_vm).start()
+      project_name = request.args.get("project_name", None)
+      if not project_name:
+        return abort(400, "Project name is required.")
+      def callback():
+        manager.force_delete_vm()
+        manager.unregister_runner_by_name(vm_name, current_app)
+      SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s is being deleted." % vm_name)
   except KeeperException as e:
     return abort(e.code, e.message)
