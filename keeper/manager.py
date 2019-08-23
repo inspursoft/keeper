@@ -146,6 +146,11 @@ class KeeperManager:
       if r['description'] == runner_name:
         runner.runner_id = r['id']
         return runner
+    rs = db.get_project_runner_by_name(runner_name)
+    for r in rs:
+      runner.runner_id = r['runner_id']
+      runner.runner_name = runner_name
+      return runner
     raise KeeperException(404, "No runner id found with provided tag: %s" % runner_name)
 
   @staticmethod
@@ -326,7 +331,7 @@ class KeeperManager:
     if not snapshot:
       snapshot = Snapshot(vm.vm_id, 'N/A')
     r = db.check_project_runner(project_name, vm.vm_name, runner.runner_id, snapshot.snapshot_name, app)
-    if r['cnt'] > 0:
+    if r['cnt'] == 0:
       db.insert_runner(runner, app)
       db.insert_project_runner(project, vm, runner, app)
       db.insert_vm(vm, app)

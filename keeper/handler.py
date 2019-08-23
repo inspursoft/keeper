@@ -119,7 +119,7 @@ def register_runner():
   vm = VM(data['vm_id'], data['vm_name'], data['target'], data['keeper_url'])
   snapshot = Snapshot(data['vm_id'], data['snapshot_name'])
   try:
-    KeeperManager.register_project_runner(username, project_name, runner_name, vm, snapshot, current_app)
+    KeeperManager.register_project_runner(username, project_name, runner_name, vm, snapshot=snapshot, app=current_app)
   except KeeperException as e:
     return abort(e.code, e.message)
   return jsonify(message="Successful register project runner.")

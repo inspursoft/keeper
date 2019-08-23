@@ -269,7 +269,7 @@ def prepare_runner():
   object_attr = data["object_attributes"]
   status = object_attr["status"]
   current_app.logger.debug("Runner with pipeline status is %s.", status)
-  if status not in ["pending"]:
+  if status not in ["pending", "running"]:
     current_app.logger.debug("Runner would not be prepared as the pipeline is %s.", status)
     return jsonify(message="Runner would not be prepared as the pipeline was not for running.")
   username = data["user"]["name"]

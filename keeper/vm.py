@@ -1,5 +1,5 @@
 from flask import (
-  Blueprint, request,  jsonify, current_app, abort, Response
+  Blueprint, request,  jsonify, current_app, abort, Response, url_for
 )
 
 from keeper.db import get_vm
@@ -37,16 +37,25 @@ def vm():
       return abort(400, 'Runner tag is required.')
     try:
       current = current_app._get_current_object()
-      def callback():
-        runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
-        manager = KeeperManager(current, vm_name)
-        manager.generate_vagrantfile(runner_token, vm_conf)
-        manager.copy_vm_files()
-        current.logger.debug(manager.create_vm())
-        info = manager.get_vm_info()
-        vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
-        KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
-      SubTaskUtil.set(current_app, callback).start()
+      # def callback():
+      manager = KeeperManager(current, vm_name)
+      project = KeeperManager.resolve_project(username, project_name, current)
+      try:
+        runner = KeeperManager.resolve_runner(project.project_id, vm_name, current)
+        if runner:
+          current.logger.debug("Runner already exist, remove it first...")
+          manager.force_delete_vm()
+          manager.unregister_runner_by_name(vm_name, current)
+      except KeeperException as ke:
+        current.logger.debug("Runner does not exist, will create one...")
+      runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
+      manager.generate_vagrantfile(runner_token, vm_conf)
+      manager.copy_vm_files()
+      current.logger.debug(manager.create_vm())
+      info = manager.get_vm_info()
+      vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
+      KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
+      # SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s has being created." % vm_name)
     except KeeperException as e:
       return abort(e.code, e.message)
