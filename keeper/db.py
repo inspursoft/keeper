@@ -151,6 +151,15 @@ def get_note_template(name):
          where template_name = ? ''', (name,)
   ).fetchone()
 
+def get_available_ip_by_project(project_id):
+  return get_db().execute(
+    '''select min(ip.id) id, min(ip.ip_address) ip_address, min(ip.project_id) project_id
+          from ip_provision ip 
+         left join ip_runner ir on ir.ip_provision_id = ip.id
+         where ir.ip_provision_id is null 
+            and ip.project_id = ?''', (project_id,)
+  ).fetchone()
+
 def proxied_execute(app, sql, *data):
   c = get_db()
   try:
@@ -202,3 +211,16 @@ def insert_note_template(name, template, app):
 
 def update_runner_token(runner_token, project_id, app):
   proxied_execute(app, 'update project set runner_token = ? where project_id = ?', (runner_token, project_id))
+
+def insert_ip_runner(ip_provision_id, runner_id, app):
+  proxied_execute(app, 'insert into ip_runner (ip_provision_id, runner_id) values (?, ?)', (ip_provision_id, runner_id))
+
+def remove_ip_runner(runner_id, app):
+  proxied_execute(app, 'delete from ip_runner where runner_id = ?', (runner_id,))
+
+def remove_ip_runner_by_project_id(project_id, app):
+  proxied_execute(app, '''
+    delete from ip_runner where ip_provision_id in (
+      select ip_provision_id from ip_provision
+        where project_id = ?)
+  ''', (project_id,))

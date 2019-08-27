@@ -267,26 +267,44 @@ def prepare_runner():
   current_app.logger.debug(request.get_json())
   data = request.get_json()
   object_attr = data["object_attributes"]
+  pipeline_id = object_attr["id"]
   status = object_attr["status"]
-  current_app.logger.debug("Runner with pipeline status is %s.", status)
-  if status not in ["pending", "running"]:
-    current_app.logger.debug("Runner would not be prepared as the pipeline is %s.", status)
-    return jsonify(message="Runner would not be prepared as the pipeline was not for running.")
+  project = data["project"]
+  project_id = project["id"]
+  project_name = project["path_with_namespace"]
+  builds = data["builds"]
+  abbr_name = project["name"]
   username = data["user"]["name"]
-  project_name = data["project"]["path_with_namespace"]
-  abbr_name = data["project"]["name"]
+  vm_name = "%s-runner-%s" % (abbr_name, username)
+  if status in ["success"]:
+    KeeperManager.release_ip_runner_on_success(builds, current_app)
+  elif status in ["canceled"]:
+    KeeperManager.release_ip_runner_on_canceled(project_id, current_app)
+  if status in ["success", "canceled"]:
+    current_app.logger.debug("Runner mission is %s will be removed it...", status)
+    KeeperManager(current_app, vm_name).force_delete_vm()
+    KeeperManager.unregister_runner_by_name(vm_name, current_app)
+  if status not in ["running", "pending"]:
+    current_app.logger.debug("Runner would not be prepared as the pipeline is %s.", status) 
+    return jsonify(message="Runner would not be prepared as the pipeline was not for running.")
   try:
-    vm_name = "%s-runner-%s" % (abbr_name, username)
+    ip_provision = KeeperManager.get_ip_provision(project_id)
+  except KeeperException as e:
+    current_app.logger.error(e.message)
+    return abort(e.code, e.message)
+  current_app.logger.debug("Runner with pipeline: %d status is %s, with IP provision ID: %d, IP: %s", pipeline_id, status, ip_provision.id, ip_provision.ip_address)
+ 
+  try:
     vm_conf = {
       "vm_box": get_info("VM_CONF")["VM_BOX"],
       "vm_memory": get_info("VM_CONF")["VM_MEMORY"],
-      "vm_ip": "10.110.27.164",
+      "vm_ip": ip_provision.ip_address,
       "runner_name": vm_name,
       "runner_tag": "%s-vm" % (vm_name),
       "runner_token": KeeperManager.resolve_runner_token(username, project_name, current_app)
     }
     request_url = urljoin("http://localhost:5000", url_for("vm.vm", name=vm_name, username=username, project_name=project_name))
-    resp = requests.post(request_url, json=vm_conf)
+    resp = requests.post(request_url, json=vm_conf, params={"ip_provision_id": ip_provision.id})
     message = "Requested URL: %s with status code: %d" % (request_url, resp.status_code)
     current_app.logger.debug(message)
     return message

@@ -68,28 +68,28 @@ Vagrant.configure("2") do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<-SHELL
+     sudo route del default gw 10.0.2.2 
+     sudo route add default gw 10.110.27.254
+     
      sudo cp /vagrant/gitlab-runner /usr/local/bin
      sudo chmod +x /usr/local/bin/gitlab-runner 
      sudo gitlab-runner install --user=root 
      sudo gitlab-runner start
-
      sudo gitlab-runner register --name "{{ runner_name }}" \
            --url="{{ gitlab_url }}" \
            --registration-token="{{ runner_token }}" \
            --executor="shell" \
            --non-interactive --tag-list "{{ runner_tag }}"
 
-     cd /vagrant
-     sudo dpkg -i *.deb
-     sudo cp /vagrant/daemon.json /etc/docker
-     sudo systemctl daemon-reload
-     sudo systemctl start docker
-     sudo systemctl restart docker
+   #   cd /vagrant
+   #   sudo dpkg -i *.deb
+   #   sudo cp /vagrant/daemon.json /etc/docker
+   #   sudo systemctl daemon-reload
+   #   sudo systemctl start docker
+   #   sudo systemctl restart docker
 
-     sudo cp /vagrant/docker-compose /usr/bin
+   #   sudo cp /vagrant/docker-compose /usr/bin
 
-     sudo apt-get -qqy install make
-     sudo route del default gw 10.0.2.2 
-     sudo route add default gw 10.110.27.254
+   #   sudo apt-get -qqy install make
    SHELL
 end

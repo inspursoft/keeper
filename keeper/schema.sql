@@ -62,3 +62,14 @@ create table note_template (
   template_name text unique not null,
   template_content text
 );
+
+create table ip_provision (
+  id integer primary key autoincrement,
+  project_id integer not null,
+  ip_address text unique not null
+);
+
+create table ip_runner (
+  ip_provision_id integer not null,
+  runner_id integer not null
+);

@@ -26,6 +26,9 @@ def vm():
     project_name = request.args.get('project_name', None)
     if not project_name:
       return abort(400, 'Project name is required.')
+    ip_provision_id = request.args.get('ip_provision_id', None)
+    if not ip_provision_id:
+      return abort(400, "IP provision ID is required.")
     vm_conf = request.get_json()
     if 'vm_box' not in vm_conf:
       return abort(400, 'VM box is required.')
@@ -40,14 +43,6 @@ def vm():
       # def callback():
       manager = KeeperManager(current, vm_name)
       project = KeeperManager.resolve_project(username, project_name, current)
-      try:
-        runner = KeeperManager.resolve_runner(project.project_id, vm_name, current)
-        if runner:
-          current.logger.debug("Runner already exist, remove it first...")
-          manager.force_delete_vm()
-          manager.unregister_runner_by_name(vm_name, current)
-      except KeeperException as ke:
-        current.logger.debug("Runner does not exist, will create one...")
       runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
       manager.generate_vagrantfile(runner_token, vm_conf)
       manager.copy_vm_files()
@@ -55,6 +50,8 @@ def vm():
       info = manager.get_vm_info()
       vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
       KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
+      runner = KeeperManager.resolve_runner(project.project_id, vm_name, current)
+      KeeperManager.register_ip_runner(ip_provision_id, runner.runner_id, current)
       # SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s has being created." % vm_name)
     except KeeperException as e:

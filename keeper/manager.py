@@ -218,8 +218,14 @@ class KeeperManager:
 
   @staticmethod
   def trigger_pipeline(project_id, ref, app):
-    app.logger.debug("Trigger pipeline with project_id: %d", project_id)
+    app.logger.debug("Trigger pipeline with project ID: %d", project_id)
     request_url = "%s/projects/%d/pipeline?ref=%s" % (KeeperManager.get_gitlab_api_url(), project_id, ref)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app)
+
+  @staticmethod
+  def cancel_pipeline(project_id, pipeline_id, app):
+    app.logger.debug("Cancel pipeline with project ID: %d, pipeline ID: %d", project_id, pipeline_id)
+    request_url = "%s/projects/%d/pipelines/%d/cancel" % (KeeperManager.get_gitlab_api_url(), project_id, pipeline_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
 
   @staticmethod
@@ -444,3 +450,35 @@ class KeeperManager:
     p = re.compile(r"\[(?P<tag>[^\]]+)\]")
     content = p.sub("%s/\g<tag>" % get_info("NGINX_PROXY"), content)
     return TemplateUtil.render_simple(content, **kwargs)
+
+  @staticmethod
+  def get_ip_provision(project_id):
+    r = db.get_available_ip_by_project(project_id)
+    if not r["id"]:
+      raise KeeperException(404, "No IP provision found currently.")
+    return IPProvision(r["id"], r["project_id"], r["ip_address"])
+
+  @staticmethod
+  def register_ip_runner(ip_provision_id, runner_id, app):
+    db.insert_ip_runner(ip_provision_id, runner_id, app)
+
+  @staticmethod
+  def unregister_ip_runner(runner_id, app):
+    db.remove_ip_runner(runner_id, app)
+
+  @staticmethod
+  def release_ip_runner_on_success(builds, app):
+    for build in builds:
+      status = build["status"]
+      if status == "success":
+        runner = build["runner"]
+        if runner is not None:
+          app.logger.debug("Release IP with runner ID: %d per SUCCESS.", runner["id"])
+          db.remove_ip_runner(runner["id"], app)
+
+  @staticmethod
+  def release_ip_runner_on_canceled(project_id, app):
+    app.logger.debug("Release IP with project ID: %d as CANCELED.", project_id)
+    db.remove_ip_runner_by_project_id(project_id, app)
+    
+    
