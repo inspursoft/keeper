@@ -285,7 +285,7 @@ def prepare_runner():
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
     current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
     return jsonify(message="VM would not be re-created as the pipeline is same with last one.")
-  elif status not in ["running", "pending"]:
+  if status not in ["running", "pending"]:
     current_app.logger.debug("Runner would not be prepared as the pipeline is %s.", status) 
     return jsonify(message="Runner would not be prepared as the pipeline is %s" % (status,))
   try:

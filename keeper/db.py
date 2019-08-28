@@ -163,7 +163,7 @@ def get_available_ip_by_project(project_id):
 
 def get_ip_provision_by_pipeline(pipeline_id):
   return get_db().execute(
-    '''select ir.ip_provision_id, ip.ip_address, ip.project_id from ip_runner ir
+    '''select ir.ip_provision_id, ir.pipeline_id, ip.ip_address, ip.project_id from ip_runner ir
           left join ip_provision ip on ip.id = ir.ip_provision_id
           where ir.pipeline_id = ?
     ''',(pipeline_id,)
