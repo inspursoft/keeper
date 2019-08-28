@@ -342,6 +342,7 @@ class KeeperManager:
       db.insert_project_runner(project, vm, runner, app)
       db.insert_vm(vm, app)
       db.insert_snapshot(snapshot, app)
+      return runner
     else:
       app.logger.error("Project: %s with runner: %d, VM: %s and snapshot: %s already exists."
          % (project.project_name, runner.runner_id, vm.vm_name, snapshot.snapshot_name))
@@ -452,33 +453,43 @@ class KeeperManager:
     return TemplateUtil.render_simple(content, **kwargs)
 
   @staticmethod
-  def get_ip_provision(project_id):
+  def get_ip_provision(project_id, app):
     r = db.get_available_ip_by_project(project_id)
     if not r["id"]:
       raise KeeperException(404, "No IP provision found currently.")
+    db.update_ip_provision_by_id(r["id"], 1, app)
     return IPProvision(r["id"], r["project_id"], r["ip_address"])
 
   @staticmethod
-  def register_ip_runner(ip_provision_id, runner_id, app):
-    db.insert_ip_runner(ip_provision_id, runner_id, app)
+  def get_ip_provision_by_pipeline(pipeline_id, app):
+    r = db.get_ip_provision_by_pipeline(pipeline_id)
+    if r and r["ip_provision_id"] > 0:
+      return True
+    return False
+  
+  @staticmethod
+  def register_ip_runner(ip_provision_id, runner_id, pipeline_id, app):
+    db.insert_ip_runner(ip_provision_id, runner_id, pipeline_id, app)
 
   @staticmethod
   def unregister_ip_runner(runner_id, app):
     db.remove_ip_runner(runner_id, app)
 
   @staticmethod
-  def release_ip_runner_on_success(builds, app):
-    for build in builds:
-      status = build["status"]
-      if status == "success":
-        runner = build["runner"]
-        if runner is not None:
-          app.logger.debug("Release IP with runner ID: %d per SUCCESS.", runner["id"])
-          db.remove_ip_runner(runner["id"], app)
+  def release_ip_runner_on_success(pipeline_id, app):
+    r = db.get_ip_provision_by_pipeline(pipeline_id)
+    if r and len(r) > 0:
+      ip_provision_id = r["ip_provision_id"]
+      ip_address = r["ip_address"]
+      project_id = r["project_id"]
+      db.update_ip_provision_by_id(ip_provision_id, 0, app)
+      db.remove_ip_runner(ip_provision_id, app)
+      app.logger.debug("Release IP: %s with project ID: %d as SUCCESS.", ip_address, project_id)
 
   @staticmethod
   def release_ip_runner_on_canceled(project_id, app):
-    app.logger.debug("Release IP with project ID: %d as CANCELED.", project_id)
+    db.update_ip_provision_by_project_id(project_id, 0, app)
     db.remove_ip_runner_by_project_id(project_id, app)
+    app.logger.debug("Release IP with project ID: %d as CANCELED.", project_id)
     
     

@@ -157,7 +157,16 @@ def get_available_ip_by_project(project_id):
           from ip_provision ip 
          left join ip_runner ir on ir.ip_provision_id = ip.id
          where ir.ip_provision_id is null 
+            and ip.is_allocated = 0
             and ip.project_id = ?''', (project_id,)
+  ).fetchone()
+
+def get_ip_provision_by_pipeline(pipeline_id):
+  return get_db().execute(
+    '''select ir.ip_provision_id, ip.ip_address, ip.project_id from ip_runner ir
+          left join ip_provision ip on ip.id = ir.ip_provision_id
+          where ir.pipeline_id = ?
+    ''',(pipeline_id,)
   ).fetchone()
 
 def proxied_execute(app, sql, *data):
@@ -212,11 +221,11 @@ def insert_note_template(name, template, app):
 def update_runner_token(runner_token, project_id, app):
   proxied_execute(app, 'update project set runner_token = ? where project_id = ?', (runner_token, project_id))
 
-def insert_ip_runner(ip_provision_id, runner_id, app):
-  proxied_execute(app, 'insert into ip_runner (ip_provision_id, runner_id) values (?, ?)', (ip_provision_id, runner_id))
+def insert_ip_runner(ip_provision_id, runner_id, pipeline_id, app):
+  proxied_execute(app, 'insert into ip_runner (ip_provision_id, runner_id, pipeline_id) values (?, ?, ?)', (ip_provision_id, runner_id, pipeline_id))
 
-def remove_ip_runner(runner_id, app):
-  proxied_execute(app, 'delete from ip_runner where runner_id = ?', (runner_id,))
+def remove_ip_runner(ip_provision_id, app):
+  proxied_execute(app, 'delete from ip_runner where ip_provision_id = ?', (ip_provision_id,))
 
 def remove_ip_runner_by_project_id(project_id, app):
   proxied_execute(app, '''
@@ -224,3 +233,9 @@ def remove_ip_runner_by_project_id(project_id, app):
       select ip_provision_id from ip_provision
         where project_id = ?)
   ''', (project_id,))
+
+def update_ip_provision_by_id(ip_provision_id, is_allocated, app):
+  proxied_execute(app, 'update ip_provision set is_allocated = ? where id = ?', (is_allocated, ip_provision_id))
+
+def update_ip_provision_by_project_id(project_id, is_allocated, app):
+  proxied_execute(app, 'update ip_provision set is_allocated = ? where project_id = ?', (is_allocated, project_id))
