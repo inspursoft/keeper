@@ -223,6 +223,12 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
 
   @staticmethod
+  def retry_pipeline(project_id, pipeline_id, app):
+    app.logger.debug("Retry pipeline with project ID: %d, pipeline ID: %d", project_id, pipeline_id)
+    request_url = "%s/projects/%d/pipelines/%d/retry" % (KeeperManager.get_gitlab_api_url(), project_id, pipeline_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app)
+
+  @staticmethod
   def cancel_pipeline(project_id, pipeline_id, app):
     app.logger.debug("Cancel pipeline with project ID: %d, pipeline ID: %d", project_id, pipeline_id)
     request_url = "%s/projects/%d/pipelines/%d/cancel" % (KeeperManager.get_gitlab_api_url(), project_id, pipeline_id)
@@ -457,8 +463,11 @@ class KeeperManager:
     r = db.get_available_ip_by_project(project_id)
     if not r["id"]:
       raise KeeperException(404, "No IP provision found currently.")
-    db.update_ip_provision_by_id(r["id"], 1, app)
     return IPProvision(r["id"], r["project_id"], r["ip_address"])
+
+  @staticmethod
+  def reserve_ip_provision(ip_provision_id, app):
+    db.update_ip_provision_by_id(ip_provision_id, 1, app)
 
   @staticmethod
   def get_ip_provision_by_pipeline(pipeline_id, app):

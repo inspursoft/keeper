@@ -11,6 +11,10 @@ from keeper.manager import *
 from keeper import get_info
 import ast
 
+import queue
+import time
+import threading
+
 bp = Blueprint("integration", __name__ ,url_prefix="/api/v1")
 
 '''
@@ -262,24 +266,55 @@ def upload_artifacts():
     tf.extractall(target_path)
   return "Successful uploaded and processed artifacts."
 
+q = queue.Queue()
+
+@bp.route("/runners/probe")
+def runner_probe():
+  project_id = request.args.get("project_id", None)
+  if not project_id:
+    return abort(400, "Project ID is required.")
+  while not q.empty():
+    try:
+      ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
+      pipeline_id = q.get()
+      current_app.logger.debug("Got pipeline ID: %d from queue.", pipeline_id)
+      try:
+        KeeperManager.retry_pipeline(int(project_id), pipeline_id, current_app)
+      except KeeperException as e:
+        current_app.logger.error(e.message)
+    except KeeperException as e:
+      current_app.logger.error("Waiting for release IP to retry pipelines ...")
+    time.sleep(4)
+  return "None of queued pipelines."
+
 @bp.route("/runners", methods=["POST"])
 def prepare_runner():
   data = request.get_json()
   current_app.logger.debug(data)
+  project = data["project"]
+  project_id = project["id"]
   object_attr = data["object_attributes"]
   pipeline_id = object_attr["id"]
   status = object_attr["status"]
-  project = data["project"]
-  project_id = project["id"]
   project_name = project["path_with_namespace"]
   builds = data["builds"]
   abbr_name = project["name"]
   username = data["user"]["name"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
+  
+  probe_request_url = urljoin("http://localhost:5000", url_for(".runner_probe", project_id=project_id))
+  def callback():  
+    resp = requests.get(probe_request_url)
+    message = "Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code)
+  threading.Thread(target=callback).start()
+
   if status in ["success", "canceled"]:
     current_app.logger.debug("Runner mission is %s will be removed it...", status)
-    KeeperManager(current_app, vm_name).force_delete_vm()
+    try:
+      KeeperManager(current_app, vm_name).force_delete_vm()
+    except KeeperException as e:
+      current_app.logger.error(e.message)
     KeeperManager.unregister_runner_by_name(vm_name, current_app)
     KeeperManager.release_ip_runner_on_success(pipeline_id, current_app)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
@@ -290,11 +325,13 @@ def prepare_runner():
     return jsonify(message="Runner would not be prepared as the pipeline is %s" % (status,))
   try:
     ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
+    KeeperManager.reserve_ip_provision(ip_provision.id, current_app)
   except KeeperException as e:
     current_app.logger.error(e.message)
+    KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)
+    q.put(pipeline_id)
     return abort(e.code, e.message)
   current_app.logger.debug("Runner with pipeline: %d status is %s, with IP provision ID: %d, IP: %s", pipeline_id, status, ip_provision.id, ip_provision.ip_address)
- 
   try:
     vm_conf = {
       "vm_box": get_info("VM_CONF")["VM_BOX"],
