@@ -302,7 +302,7 @@ def prepare_runner():
   project_name = project["path_with_namespace"]
   builds = data["builds"]
   abbr_name = project["name"]
-  username = data["user"]["name"]
+  username = data["user"]["username"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
   
