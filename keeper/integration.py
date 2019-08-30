@@ -11,6 +11,8 @@ from keeper.manager import *
 from keeper import get_info
 import ast
 
+from keeper.model import *
+
 import queue
 import time
 import threading
@@ -167,16 +169,17 @@ def issue_open_peer():
     assignee_id = object_attr["assignee_id"]
     milestone_id = object_attr["milestone_id"]
     if assignee_id is None or milestone_id is None:
+      assignee = User.new()
       if assignee_id is None:
-       assignee = KeeperManager.resolve_user(default_assignee, current_app)
-       assignee_id = assignee["user_id"]
+        assignee = KeeperManager.resolve_user(default_assignee, current_app)
+        assignee_id = assignee.user_id
       if milestone_id is None:
         milestones = KeeperManager.get_all_milestones(project_id, {"state": "active"}, current_app) 
         if len(milestones) == 0:
           current_app.logger.error("No active milestones found with project ID: %d" % (project_id))
           return abort(404, "No active milestones found with project ID: %d" % (project_id))
         milestone_id = milestones[-1]["id"]
-      KeeperManager.update_issue(project_id, issue_iid, {"assignee_ids": [assignee["user_id"]], "milestone_id": milestone_id}, current_app)
+      KeeperManager.update_issue(project_id, issue_iid, {"assignee_ids": [assignee.user_id], "milestone_id": milestone_id}, current_app)
     KeeperManager.create_branch_per_assignee(project_name, assignee_id, branch_name, ref, current_app)
     return jsonify(message="Successful created branch: %s per assignee ID: %d" % (branch_name, assignee_id))
   except KeeperException as e:

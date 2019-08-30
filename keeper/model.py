@@ -12,9 +12,14 @@ class User:
     self.user_id = user_id
     self.username = username
     self.token = token
- 
+
   def __str__(self):
     return "user_id: %d, username: %s, token: %s" % (self.user_id, self.username, self.token)
+  
+  @classmethod
+  def new(cls):
+    return cls(0, '', '')
+
 
 class Project:
   __slots__ = 'project_id', 'project_name', 'runner_token'
