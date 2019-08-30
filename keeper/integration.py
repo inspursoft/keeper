@@ -283,7 +283,7 @@ def runner_probe():
       except KeeperException as e:
         current_app.logger.error(e.message)
     except KeeperException as e:
-      current_app.logger.error("Waiting for release IP to retry pipelines ...")
+      current_app.logger.debug("Waiting for release IP to retry pipelines ...")
     time.sleep(4)
   return "None of queued pipelines."
 
