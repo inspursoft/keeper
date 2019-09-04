@@ -2,7 +2,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 from keeper.model import *
-import keeper.db as db
+from keeper import db
 from keeper import get_info
 from keeper.util import TemplateUtil, SSHUtil
 

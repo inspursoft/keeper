@@ -1,15 +1,19 @@
-FROM python:3.7.3-alpine3.10
+FROM python:3.6-slim-jessie
 MAINTAINER wangkun_lc@inspur.com
 
-COPY setup.py /setup.py
-COPY keeper /keeper
+RUN mkdir /keeper /keeper/instance
+
+COPY setup.py /keeper/setup.py
+COPY keeper /keeper/keeper
+
+WORKDIR /keeper
+RUN pip install -e .
+
+WORKDIR /
+VOLUME [ "/keeper/instance" ]
+EXPOSE 5000
 
 ENV FLASK_APP keeper
 ENV FLASK_ENV development
 
-RUN pip install -e .
-WORKDIR /
-
-VOLUME [ "/instance" ]
-EXPOSE 5000
-
+CMD [ "flask", "run", "-h", "0.0.0.0"]
