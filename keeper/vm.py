@@ -49,7 +49,7 @@ def vm():
       def callback():
         manager = KeeperManager(current, vm_name)
         project = KeeperManager.resolve_project(username, project_name, current, project_id=project_id)
-        runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
+        runner_token = KeeperManager.resolve_runner_token(username, project_id, project_name, current)
         manager.generate_vagrantfile(runner_token, vm_conf)
         manager.copy_vm_files()
         current.logger.debug(manager.create_vm())
