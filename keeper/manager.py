@@ -356,7 +356,7 @@ class KeeperManager:
     else:
       app.logger.error("Project: %s with runner: %d, VM: %s and snapshot: %s already exists."
          % (project.project_name, runner.runner_id, vm.vm_name, snapshot.snapshot_name))
-      raise KeeperException(419, "Project: %s with runner: %d, VM: %s and snapshot: %s already exists."
+      raise KeeperException(409, "Project: %s with runner: %d, VM: %s and snapshot: %s already exists."
          % (project.project_name, runner.runner_id, vm.vm_name, snapshot.snapshot_name))
 
   @staticmethod
