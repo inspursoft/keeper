@@ -335,7 +335,7 @@ class KeeperManager:
           return project
       raise KeeperException(404, "No project id found with provided project name: %s" % project_name)
     else:
-      project.project_id = project_id
+      project.project_id = int(project_id)
       return project
 
   @staticmethod
