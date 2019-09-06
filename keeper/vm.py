@@ -23,6 +23,9 @@ def vm():
     username = request.args.get('username', None)
     if not username:
       return abort(400, 'Username is required.')
+    project_id = request.args.get('project_id', None)
+    if not project_id:
+      return abort(400, 'Project ID is required.')
     project_name = request.args.get('project_name', None)
     if not project_name:
       return abort(400, 'Project name is required.')
@@ -45,7 +48,7 @@ def vm():
       current = current_app._get_current_object()
       def callback():
         manager = KeeperManager(current, vm_name)
-        project = KeeperManager.resolve_project(username, project_name, current)
+        project = KeeperManager.resolve_project(username, project_name, current, project_id)
         runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
         manager.generate_vagrantfile(runner_token, vm_conf)
         manager.copy_vm_files()

@@ -346,7 +346,7 @@ def prepare_runner():
       "vm_ip": ip_provision.ip_address,
       "runner_name": vm_name,
       "runner_tag": "%s-vm" % (vm_base_name),
-      "runner_token": KeeperManager.resolve_runner_token(username, project_name, current_app)
+      "runner_token": KeeperManager.resolve_runner_token(username, project_id, project_name, current_app)
     }
     request_url = urljoin("http://localhost:5000", url_for("vm.vm", name=vm_name, username=username, project_name=project_name))
     resp = requests.post(request_url, json=vm_conf, params={"ip_provision_id": ip_provision.id, "pipeline_id": pipeline_id})

@@ -323,16 +323,20 @@ class KeeperManager:
     return re.sub(r'\W', '-', title.lower()).strip('-')
 
   @staticmethod
-  def resolve_project(username, project_name, app):
-    token = KeeperManager.resolve_token(username, app)
-    projects = KeeperManager.get_gitlab_projects(token, app)
+  def resolve_project(username, project_name, app, project_id=None):
     project = Project(project_name)
-    for p in projects:
-      if p['path_with_namespace'] == project_name:
-        project.project_id = p['id']
-        app.logger.debug("Obtained project: %s in project runner registration." % project) 
-        return project
-    raise KeeperException(404, "No project id found with provided project name: %s" % project_name)
+    if not project_id:
+      token = KeeperManager.resolve_token(username, app)
+      projects = KeeperManager.get_gitlab_projects(token, app)
+      for p in projects:
+        if p['path_with_namespace'] == project_name:
+          project.project_id = p['id']
+          app.logger.debug("Obtained project: %s in project runner registration." % project) 
+          return project
+      raise KeeperException(404, "No project id found with provided project name: %s" % project_name)
+    else:
+      project.project_id = project_id
+      return project
 
   @staticmethod
   def register_project_runner(username, project_name, runner_name, vm, snapshot=None, app=None):
@@ -384,8 +388,8 @@ class KeeperManager:
     db.insert_user(User(user['id'], username, token), app)
 
   @staticmethod
-  def resolve_user_project(username, project_name, app):
-    project = KeeperManager.resolve_project(username, project_name, app)
+  def resolve_user_project(username, project_name, app, project_id=None):
+    project = KeeperManager.resolve_project(username, project_name, app, project_id=project_id)
     app.logger.debug("Obtained project: %s in user creation with project." % project)
     return project
 
@@ -402,16 +406,16 @@ class KeeperManager:
     db.insert_user_project(user, project, app)
     
   @staticmethod
-  def resolve_runner_token(username, project_name, app):
-    project = KeeperManager.resolve_user_project(username, project_name, app)
+  def resolve_runner_token(username, project_id, project_name, app):
+    project = KeeperManager.resolve_user_project(username, project_id, project_name, app)
     r = db.get_runner_token(username, project_name)
     if not r:
       raise KeeperException(404, 'No project runner token found with project: %s and username: %s' % (project_name, username))
     return r['runner_token']
 
   @staticmethod
-  def update_runner_token(username, project_name, runner_token, app):
-    project = KeeperManager.resolve_user_project(username, project_name, app)
+  def update_runner_token(username, project_id, project_name, runner_token, app):
+    project = KeeperManager.resolve_user_project(username, project_name, app, project_id=project_id)
     db.update_runner_token(runner_token, project.project_id, app)
 
   @staticmethod
