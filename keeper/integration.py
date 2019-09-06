@@ -302,7 +302,11 @@ def prepare_runner():
   project_name = project["path_with_namespace"]
   builds = data["builds"]
   abbr_name = project["name"]
-  username = data["user"]["username"]
+  
+  # username = data["user"]["username"]
+  username = request.args.get("username", None)
+  if not username:
+    return abort(400, "Username is required.")
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
   
