@@ -48,7 +48,7 @@ def vm():
       current = current_app._get_current_object()
       def callback():
         manager = KeeperManager(current, vm_name)
-        project = KeeperManager.resolve_project(username, project_name, current, project_id)
+        project = KeeperManager.resolve_project(username, project_name, current, project_id=project_id)
         runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
         manager.generate_vagrantfile(runner_token, vm_conf)
         manager.copy_vm_files()
