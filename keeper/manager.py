@@ -407,7 +407,7 @@ class KeeperManager:
     
   @staticmethod
   def resolve_runner_token(username, project_id, project_name, app):
-    project = KeeperManager.resolve_user_project(username, project_id, project_name, app)
+    project = KeeperManager.resolve_user_project(username, project_name, app, project_id=project_id)
     r = db.get_runner_token(username, project_name)
     if not r:
       raise KeeperException(404, 'No project runner token found with project: %s and username: %s' % (project_name, username))
