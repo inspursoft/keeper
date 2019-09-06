@@ -55,7 +55,7 @@ def vm():
         current.logger.debug(manager.create_vm())
         info = manager.get_vm_info()
         vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
-        runner = KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
+        runner = KeeperManager.register_project_runner(username, project_id, project_name, vm_name, vm, snapshot=None, app=current_app)
         KeeperManager.register_ip_runner(ip_provision_id, runner.runner_id, pipeline_id, current)
       SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s has being created." % vm_name)

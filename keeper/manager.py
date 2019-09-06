@@ -339,9 +339,9 @@ class KeeperManager:
       return project
 
   @staticmethod
-  def register_project_runner(username, project_name, runner_name, vm, snapshot=None, app=None):
+  def register_project_runner(username, project_id, project_name, runner_name, vm, snapshot=None, app=None):
     token = KeeperManager.resolve_token(username, app)
-    project = KeeperManager.resolve_project(username, project_name, app)
+    project = KeeperManager.resolve_project(username, project_name, app, project_id=project_id)
     runner = KeeperManager.resolve_runner(project.project_id, runner_name, app)
     app.logger.debug("Obtained runner: %s in project runner registration." % runner)    
     if not snapshot:
