@@ -302,11 +302,8 @@ def prepare_runner():
   project_name = project["path_with_namespace"]
   builds = data["builds"]
   abbr_name = project["name"]
-  
-  # username = data["user"]["username"]
-  username = request.args.get("username", None)
-  if not username:
-    return abort(400, "Username is required.")
+  user = data["user"]
+  username = user["username"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
   
@@ -337,7 +334,9 @@ def prepare_runner():
   except KeeperException as e:
     current_app.logger.error(e.message)
     KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)
-    q.put(pipeline_id)
+    if not KeeperManager.check_ip_provision_used_by_pipeline(pipeline_id, current_app):
+      current_app.logger.debug("Pipeline: %d has queued for executing.", pipeline_id)
+      q.put(pipeline_id)
     return abort(e.code, e.message)
   current_app.logger.debug("Runner with pipeline: %d status is %s, with IP provision ID: %d, IP: %s", pipeline_id, status, ip_provision.id, ip_provision.ip_address)
   try:

@@ -473,6 +473,7 @@ class KeeperManager:
   def get_ip_provision_by_pipeline(pipeline_id, app):
     r = db.get_ip_provision_by_pipeline(pipeline_id)
     if r and r["ip_provision_id"] > 0:
+      app.logger.debug("Pipeline: %d already allocated runner with IP: %s", r['pipeline_id'], r['ip_address'])
       return True
     return False
   
