@@ -322,8 +322,9 @@ def prepare_runner():
       KeeperManager(current_app, vm_name).force_delete_vm()
     except KeeperException as e:
       current_app.logger.error(e.message)
-    KeeperManager.unregister_runner_by_name(vm_name, current_app)
-    KeeperManager.release_ip_runner_on_success(pipeline_id, current_app)
+    finally:
+      KeeperManager.unregister_runner_by_name(vm_name, current_app)
+      KeeperManager.release_ip_runner_on_success(pipeline_id, current_app)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
     current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
     return jsonify(message="VM would not be re-created as the pipeline is same with last one.")

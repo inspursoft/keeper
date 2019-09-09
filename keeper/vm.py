@@ -57,6 +57,8 @@ def vm():
       SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s has being created." % vm_name)
     except KeeperException as e:
+      KeeperManager.unregister_runner_by_name(vm_name, current_app)
+      KeeperManager.release_ip_runner_on_success(pipeline_id, current_app)
       return abort(e.code, e.message)
 
 @bp.route("/vm/info/<path:vm_name>", methods=["GET", "DELETE"])
