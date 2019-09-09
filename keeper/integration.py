@@ -335,7 +335,7 @@ def prepare_runner():
   except KeeperException as e:
     current_app.logger.error(e.message)
     KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)
-    if not KeeperManager.check_ip_provision_used_by_pipeline(pipeline_id, current_app):
+    if not KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
       current_app.logger.debug("Pipeline: %d has queued for executing.", pipeline_id)
       q.put(pipeline_id)
     return abort(e.code, e.message)
