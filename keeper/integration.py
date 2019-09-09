@@ -292,6 +292,9 @@ def runner_probe():
 
 @bp.route("/runners", methods=["POST"])
 def prepare_runner():
+  username = request.args.get("username", None)
+  if not username:
+    return abort(400, "Username is required.")
   data = request.get_json()
   current_app.logger.debug(data)
   project = data["project"]
@@ -302,8 +305,6 @@ def prepare_runner():
   project_name = project["path_with_namespace"]
   builds = data["builds"]
   abbr_name = project["name"]
-  user = data["user"]
-  username = user["username"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
   
