@@ -316,7 +316,7 @@ def prepare_runner():
     message = "Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code)
   threading.Thread(target=callback).start()
 
-  if status in ["success", "canceled"]:
+  if status in ["success", "canceled", "failed"]:
     current_app.logger.debug("Runner mission is %s will be removed it...", status)
     try:
       KeeperManager(current_app, vm_name).force_delete_vm()
