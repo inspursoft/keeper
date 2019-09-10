@@ -9,6 +9,17 @@ from keeper.model import VM
 
 bp = Blueprint('vm', __name__, url_prefix="/api/v1")
 
+def recycle_vm(current_app, vm_name, project_id, pipeline_id, status):
+  try:
+    KeeperManager(current_app, vm_name).force_delete_vm()
+  except KeeperException as e:
+    current_app.logger.error(e.message)
+    # if status == "canceled":
+    #   KeeperManager.release_ip_runner_on_cancel(project_id, status, current_app)
+  finally:
+    KeeperManager.release_ip_runner_on_success(pipeline_id, status, current_app)
+    KeeperManager.unregister_runner_by_name(vm_name, current_app)
+
 @bp.route('/vm', methods=["GET", "POST"])
 def vm():
   vm_name = request.args.get('name', None)
@@ -23,9 +34,15 @@ def vm():
     username = request.args.get('username', None)
     if not username:
       return abort(400, 'Username is required.')
+    project_id = request.args.get('project_id', None)
+    if not project_id:
+      return abort(400, 'Project ID is required.')
     project_name = request.args.get('project_name', None)
     if not project_name:
       return abort(400, 'Project name is required.')
+    status = request.args.get('status', None)
+    if not status:
+      return abort(400, 'Status is required.')
     ip_provision_id = request.args.get('ip_provision_id', None)
     if not ip_provision_id:
       return abort(400, "IP provision ID is required.")
@@ -54,11 +71,11 @@ def vm():
         vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
         runner = KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
         KeeperManager.register_ip_runner(ip_provision_id, runner.runner_id, pipeline_id, current)
+        if status == "canceled":
+          recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
       SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s has being created." % vm_name)
     except KeeperException as e:
-      KeeperManager.unregister_runner_by_name(vm_name, current_app)
-      KeeperManager.release_ip_runner_on_success(pipeline_id, current_app)
       return abort(e.code, e.message)
 
 @bp.route("/vm/info/<path:vm_name>", methods=["GET", "DELETE"])

@@ -12,6 +12,7 @@ from keeper import get_info
 import ast
 
 from keeper.model import *
+from keeper.vm import recycle_vm
 
 import queue
 import time
@@ -276,6 +277,12 @@ def runner_probe():
   project_id = request.args.get("project_id", None)
   if not project_id:
     return abort(400, "Project ID is required.")
+  vm_name = request.args.get("vm_name", None)
+  if not vm_name:
+    return abort(400, "VM name is required.")
+  status = request.args.get("status", None)
+  if not status:
+    return abort(400, "Status is required.")
   while not q.empty():
     try:
       ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
@@ -308,7 +315,7 @@ def prepare_runner():
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
   
-  probe_request_url = urljoin("http://localhost:5000", url_for(".runner_probe", project_id=project_id))
+  probe_request_url = urljoin("http://localhost:5000", url_for(".runner_probe", project_id=project_id, vm_name=vm_name, status=status))
   def callback():  
     resp = requests.get(probe_request_url)
     message = "Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code)
@@ -316,13 +323,7 @@ def prepare_runner():
 
   if status in ["success", "canceled", "failed"]:
     current_app.logger.debug("Runner mission is %s will be removed it...", status)
-    try:
-      KeeperManager(current_app, vm_name).force_delete_vm()
-    except KeeperException as e:
-      current_app.logger.error(e.message)
-    finally:
-      KeeperManager.unregister_runner_by_name(vm_name, current_app)
-      KeeperManager.release_ip_runner_on_success(pipeline_id, current_app)
+    recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
     current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
     return jsonify(message="VM would not be re-created as the pipeline is same with last one.")
@@ -349,7 +350,7 @@ def prepare_runner():
       "runner_tag": "%s-vm" % (vm_base_name),
       "runner_token": KeeperManager.resolve_runner_token(username, project_name, current_app)
     }
-    request_url = urljoin("http://localhost:5000", url_for("vm.vm", name=vm_name, username=username, project_name=project_name))
+    request_url = urljoin("http://localhost:5000", url_for("vm.vm", name=vm_name, username=username, project_id=project_id, project_name=project_name, status=status))
     resp = requests.post(request_url, json=vm_conf, params={"ip_provision_id": ip_provision.id, "pipeline_id": pipeline_id})
     message = "Requested URL: %s with status code: %d" % (request_url, resp.status_code)
     current_app.logger.debug(message)

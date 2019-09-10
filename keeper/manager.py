@@ -486,20 +486,21 @@ class KeeperManager:
     db.remove_ip_runner(runner_id, app)
 
   @staticmethod
-  def release_ip_runner_on_success(pipeline_id, app):
+  def release_ip_runner_on_success(pipeline_id, status, app):
+    app.logger.debug("Releasing pipeline ID: %d with status: %s", pipeline_id, status)
     r = db.get_ip_provision_by_pipeline(pipeline_id)
-    if r and len(r) > 0:
+    if r:
       ip_provision_id = r["ip_provision_id"]
       ip_address = r["ip_address"]
       project_id = r["project_id"]
       db.update_ip_provision_by_id(ip_provision_id, 0, app)
       db.remove_ip_runner(ip_provision_id, app)
-      app.logger.debug("Release IP: %s with project ID: %d as SUCCESS.", ip_address, project_id)
-
+      app.logger.debug("Released IP: %s with project ID: %d as %s.", ip_address, project_id, status)
+      
   @staticmethod
-  def release_ip_runner_on_canceled(project_id, app):
+  def release_ip_runner_on_cancel(project_id, status, app):
     db.update_ip_provision_by_project_id(project_id, 0, app)
     db.remove_ip_runner_by_project_id(project_id, app)
-    app.logger.debug("Release IP with project ID: %d as CANCELED.", project_id)
+    app.logger.debug("Release IP with project ID: %s as %s.", project_id, status)
     
     
