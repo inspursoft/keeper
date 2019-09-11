@@ -14,8 +14,6 @@ def recycle_vm(current_app, vm_name, project_id, pipeline_id, status):
     KeeperManager(current_app, vm_name).force_delete_vm()
   except KeeperException as e:
     current_app.logger.error(e.message)
-    # if status == "canceled":
-    #   KeeperManager.release_ip_runner_on_cancel(project_id, status, current_app)
   finally:
     KeeperManager.release_ip_runner_on_success(pipeline_id, status, current_app)
     KeeperManager.unregister_runner_by_name(vm_name, current_app)
@@ -70,9 +68,7 @@ def vm():
         info = manager.get_vm_info()
         vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
         runner = KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
-        KeeperManager.register_ip_runner(ip_provision_id, runner.runner_id, pipeline_id, current)
-        if status == "canceled":
-          recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
+        KeeperManager.update_ip_runner(ip_provision_id, runner.runner_id, current)
       SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s has being created." % vm_name)
     except KeeperException as e:

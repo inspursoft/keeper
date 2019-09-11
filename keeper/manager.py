@@ -478,8 +478,12 @@ class KeeperManager:
     return False
   
   @staticmethod
-  def register_ip_runner(ip_provision_id, runner_id, pipeline_id, app):
-    db.insert_ip_runner(ip_provision_id, runner_id, pipeline_id, app)
+  def register_ip_runner(ip_provision_id, pipeline_id, app):
+    db.insert_ip_runner(ip_provision_id, pipeline_id, app)
+
+  @staticmethod
+  def update_ip_runner(ip_provision_id, runner_id, app):
+    db.update_ip_runner(ip_provision_id, runner_id, app)
 
   @staticmethod
   def unregister_ip_runner(runner_id, app):

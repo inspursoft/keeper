@@ -333,6 +333,7 @@ def prepare_runner():
   try:
     ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
     KeeperManager.reserve_ip_provision(ip_provision.id, current_app)
+    KeeperManager.register_ip_runner(ip_provision.id, pipeline_id, current_app)
   except KeeperException as e:
     current_app.logger.error(e.message)
     KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)

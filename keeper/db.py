@@ -156,8 +156,7 @@ def get_available_ip_by_project(project_id):
     '''select min(ip.id) id, min(ip.ip_address) ip_address, min(ip.project_id) project_id
           from ip_provision ip 
          left join ip_runner ir on ir.ip_provision_id = ip.id
-         where ir.ip_provision_id is null 
-            and ip.is_allocated = 0
+         where  ip.is_allocated = 0
             and ip.project_id = ?''', (project_id,)
   ).fetchone()
 
@@ -195,7 +194,7 @@ def insert_user_project(user, project, app):
   proxied_execute(app, 'insert into user_project (project_id, user_id) values (?, ?)', (project.project_id, user.user_id))
 
 def insert_runner(runner, app):
-  proxied_execute(app, 'insert into runner (runner_id, runner_name) values (?, ?)', (runner.runner_id, runner.runner_name))
+  proxied_execute(app, 'replace into runner (runner_id, runner_name) values (?, ?)', (runner.runner_id, runner.runner_name))
 
 def insert_project_runner(project, vm, runner, app):
   proxied_execute(app, 'insert into project_runner (project_id, vm_id, runner_id) values (?, ?, ?)', (project.project_id, vm.vm_id, runner.runner_id))
@@ -221,8 +220,11 @@ def insert_note_template(name, template, app):
 def update_runner_token(runner_token, project_id, app):
   proxied_execute(app, 'update project set runner_token = ? where project_id = ?', (runner_token, project_id))
 
-def insert_ip_runner(ip_provision_id, runner_id, pipeline_id, app):
-  proxied_execute(app, 'insert into ip_runner (ip_provision_id, runner_id, pipeline_id) values (?, ?, ?)', (ip_provision_id, runner_id, pipeline_id))
+def insert_ip_runner(ip_provision_id, pipeline_id, app):
+  proxied_execute(app, 'insert into ip_runner (ip_provision_id, pipeline_id) values (?, ?)', (ip_provision_id, pipeline_id))
+
+def update_ip_runner(ip_provision_id, runner_id, app):
+  proxied_execute(app, 'update ip_runner set runner_id = ? where ip_provision_id = ?', (runner_id, ip_provision_id))
 
 def remove_ip_runner(ip_provision_id, app):
   proxied_execute(app, 'delete from ip_runner where ip_provision_id = ?', (ip_provision_id,))

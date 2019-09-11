@@ -72,6 +72,6 @@ create table ip_provision (
 
 create table ip_runner (
   ip_provision_id integer not null,
-  runner_id integer not null,
+  runner_id integer,
   pipeline_id integer not null
 );
