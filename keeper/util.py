@@ -4,6 +4,7 @@ from jinja2 import Environment, PackageLoader, Template
 import os
 from threading import Thread
 from keeper import get_info
+from keeper import db
 
 class SSHUtil:
   @classmethod

@@ -16,16 +16,16 @@ def create_app(test_config=None):
   except OSError:
     pass
     
-  from . import db
+  from keeper import db
   db.init_app(app)
 
-  from . import vm
+  from keeper import vm
   app.register_blueprint(vm.bp)
 
-  from . import handler
+  from keeper import handler
   app.register_blueprint(handler.bp)
 
-  from . import integration
+  from keeper import integration
   app.register_blueprint(integration.bp)
   
   return app

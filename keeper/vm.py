@@ -9,7 +9,7 @@ from keeper.model import VM
 
 bp = Blueprint('vm', __name__, url_prefix="/api/v1")
 
-def recycle_vm(current_app, vm_name, project_id, pipeline_id, status):
+def recycle_vm(current_app, vm_name, project_id, pipeline_id, status="N/A"):
   try:
     KeeperManager(current_app, vm_name).force_delete_vm()
   except KeeperException as e:
@@ -59,7 +59,10 @@ def vm():
     try:
       current = current_app._get_current_object()
       def callback():
+        KeeperManager.unregister_inrelevant_runner(project_id, vm_name, current)
         manager = KeeperManager(current, vm_name)
+        if manager.check_vm_exists():
+          recycle_vm(current, vm_name, project_id, pipeline_id)
         project = KeeperManager.resolve_project(username, project_name, current)
         runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
         manager.generate_vagrantfile(runner_token, vm_conf)
@@ -68,7 +71,7 @@ def vm():
         info = manager.get_vm_info()
         vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
         runner = KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
-        KeeperManager.update_ip_runner(ip_provision_id, runner.runner_id, current)
+        KeeperManager.update_ip_runner(ip_provision_id, runner.runner_id, current) 
       SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s has being created." % vm_name)
     except KeeperException as e:

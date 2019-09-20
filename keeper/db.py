@@ -169,15 +169,19 @@ def get_ip_provision_by_pipeline(pipeline_id):
   ).fetchone()
 
 def proxied_execute(app, sql, *data):
-  c = get_db()
-  try:
+  if "CONN" in app.config and app.config["CONN"]:
+    c = app.config["CONN"]
     c.execute(sql, *data)
-    c.commit()
-  except Exception as e:
-    app.logger.error(e)
-    c.rollback()
-    raise KeeperException(500, e)
- 
+  else:
+    c = get_db()
+    try:
+      c.execute(sql, *data)
+      c.commit()
+    except Exception as e:
+      app.logger.error(e)
+      c.rollback()
+      raise KeeperException(500, e)
+  
 def insert_vm(vm, app):
   proxied_execute(app, 'insert into vm (vm_id, vm_name, target, keeper_url) values (?, ?, ?, ?)', (vm.vm_id, vm.vm_name, vm.target, vm.keeper_url))
 
@@ -197,7 +201,7 @@ def insert_runner(runner, app):
   proxied_execute(app, 'replace into runner (runner_id, runner_name) values (?, ?)', (runner.runner_id, runner.runner_name))
 
 def insert_project_runner(project, vm, runner, app):
-  proxied_execute(app, 'insert into project_runner (project_id, vm_id, runner_id) values (?, ?, ?)', (project.project_id, vm.vm_id, runner.runner_id))
+  proxied_execute(app, 'replace into project_runner (project_id, vm_id, runner_id) values (?, ?, ?)', (project.project_id, vm.vm_id, runner.runner_id))
 
 def delete_project_runner(project_id, runner_id, app):
   proxied_execute(app, 'delete from project_runner where project_id = ? and runner_id = ?', (project_id, runner_id))
@@ -241,3 +245,39 @@ def update_ip_provision_by_id(ip_provision_id, is_allocated, app):
 
 def update_ip_provision_by_project_id(project_id, is_allocated, app):
   proxied_execute(app, 'update ip_provision set is_allocated = ? where project_id = ?', (is_allocated, project_id))
+
+class DBT:
+  conn = None
+  @classmethod
+  def __get_conn(cls, app):
+    cls.conn = get_db()
+    app.config["CONN"] = cls.conn
+
+  @classmethod
+  def __commit(cls):
+    cls.conn.commit()
+
+  @classmethod
+  def __rollback(cls):
+    cls.conn.rollback()
+
+  @classmethod
+  def __close(cls):
+    cls.conn.close()
+  
+  @classmethod
+  def __reset(cls, app):
+    app.config["CONN"] = None
+
+  @classmethod
+  def execute(cls, app, callback):
+    try:
+      cls.__get_conn(app)
+      app.logger.debug("Obtained DB connect from app.config['CONN'], will be running in transaction ...")
+      callback()
+      cls.__commit()
+    except sqlite3.Error as e:
+      app.logger.error("Failed to execute callback in DBT: %s", e)
+      cls.__rollback()
+    finally:
+      cls.__reset(app)
