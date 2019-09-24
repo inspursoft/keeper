@@ -353,12 +353,10 @@ class KeeperManager:
       snapshot = Snapshot(vm.vm_id, 'N/A')
     r = db.check_project_runner(project_name, vm.vm_name, runner.runner_id, snapshot.snapshot_name, app)
     if r['cnt'] == 0:
-      def t_callback():
-        db.insert_runner(runner, app)
-        db.insert_project_runner(project, vm, runner, app)
-        db.insert_vm(vm, app)
-        db.insert_snapshot(snapshot, app)
-      db.DBT.execute(app, t_callback)
+      db.insert_runner(runner, app)
+      db.insert_project_runner(project, vm, runner, app)
+      db.insert_vm(vm, app)
+      db.insert_snapshot(snapshot, app)
       return runner
     else:
       app.logger.error("Project: %s with runner: %d, VM: %s and snapshot: %s already exists."
@@ -376,14 +374,12 @@ class KeeperManager:
         KeeperManager.remove_runner(r['project_id'], r['runner_id'], app)
       except KeeperException as e:
         app.logger.error("Error occurred while removing runner via API: %s", e)
-      def t_callback():
-        db.delete_project_runner(r['project_id'], r['runner_id'], app)
-        db.delete_runner(r['runner_id'], app)
-        db.delete_vm(r['vm_id'], app)
-        db.delete_snapshot(r['snapshot_name'], app)
-        SSHUtil.exec_script(app, "rm", '-rf', os.path.join(get_info("VM_DEST_PATH"), runner_name))
-      db.DBT.execute(app, t_callback)
-  
+      db.delete_project_runner(r['project_id'], r['runner_id'], app)
+      db.delete_runner(r['runner_id'], app)
+      db.delete_vm(r['vm_id'], app)
+      db.delete_snapshot(r['snapshot_name'], app)
+      SSHUtil.exec_script(app, "rm", '-rf', os.path.join(get_info("VM_DEST_PATH"), runner_name))
+      
   @staticmethod
   def unregister_inrelevant_runner(project_id, runner_name, app):
     runners = KeeperManager.get_gitlab_runners(int(project_id), app)
@@ -394,11 +390,6 @@ class KeeperManager:
           KeeperManager.remove_runner(int(project_id), int(r['id']), app)
         except KeeperException as e:
           app.logger.error("Error occurred while removing runner via API: %s", e)
-        try:
-          manager = KeeperManager(app, current_runner_name)
-          manager.force_delete_vm()
-        except KeeperException as e:
-          app.logger.error("Error occurred while deleting inrelevant VM: %s", e)
         KeeperManager.unregister_runner_by_name(current_runner_name, app)
         
   @staticmethod
@@ -535,6 +526,6 @@ class KeeperManager:
   def release_ip_runner_on_cancel(project_id, status, app):
     db.update_ip_provision_by_project_id(project_id, 0, app)
     db.remove_ip_runner_by_project_id(project_id, app)
-    app.logger.debug("Release IP with project ID: %s as %s.", project_id, status)
+    app.logger.debug("Release IP with project ID: %d as %s.", project_id, status)
     
     

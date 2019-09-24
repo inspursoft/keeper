@@ -72,16 +72,19 @@ class VMGlobalStatus:
       (?P<status>\w+)\s+
       (?P<directory>[\w/-]+)\s+
       (?=\n)''',re.VERBOSE)
-    for m in p.finditer(raw_content):
-      vm_global_status = VMGlobalStatus()
-      vm_global_status.id = m.group("id")
-      vm_global_status.name = m.group("name")
-      vm_global_status.provider = m.group("provider")
-      vm_global_status.status = m.group("status")
-      vm_global_status.directory = m.group("directory")
-      vm_name = vm_global_status.directory[vm_global_status.directory.rindex("/")+1:]
-      if vm_name == name:
-        return vm_global_status
+    try:
+      for m in p.finditer(raw_content):
+        vm_global_status = VMGlobalStatus()
+        vm_global_status.id = m.group("id")
+        vm_global_status.name = m.group("name")
+        vm_global_status.provider = m.group("provider")
+        vm_global_status.status = m.group("status")
+        vm_global_status.directory = m.group("directory")
+        vm_name = vm_global_status.directory[vm_global_status.directory.rindex("/")+1:]
+        if vm_name == name:
+          return vm_global_status
+    except Exception:
+      pass
     return None
 
   def __str__(self):
