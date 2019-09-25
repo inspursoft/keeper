@@ -512,7 +512,7 @@ class KeeperManager:
 
   @staticmethod
   def release_ip_runner_on_success(pipeline_id, status, app):
-    app.logger.debug("Releasing pipeline ID: %d with status: %s", pipeline_id, status)
+    app.logger.debug("Releasing pipeline ID: %s with status: %s", pipeline_id, status)
     r = db.get_ip_provision_by_pipeline(pipeline_id)
     if r:
       ip_provision_id = r["ip_provision_id"]
@@ -528,4 +528,25 @@ class KeeperManager:
     db.remove_ip_runner_by_project_id(project_id, app)
     app.logger.debug("Release IP with project ID: %d as %s.", project_id, status)
     
-    
+  @staticmethod
+  def register_runner(username, project_name, config, app):
+    project = KeeperManager.resolve_project(username, project_name, app)
+    project_id = project.project_id
+    runner_token = config["runner_token"]
+    ip_address = config["ip_address"]
+    def t_callback():
+      db.update_runner_token(runner_token, project_id, app)
+      db.insert_ip_provision(ip_address, project_id, app)
+    db.DBT.execute(app, t_callback)
+    app.logger.debug("Registered runner with project ID: %d, IP: %s and token: %s", project_id, ip_address, runner_token)
+
+  @staticmethod
+  def unregister_runner(username, project_name, app):
+    project = KeeperManager.resolve_project(username, project_name, app)
+    project_id = project.project_id
+    def t_callback():
+      db.delete_ip_provision(project_id, app)
+      db.remove_ip_runner_by_project_id(project_id, app)
+      db.update_runner_token(None, project_id, app)
+    db.DBT.execute(app, t_callback)
+    app.logger.debug("Unregistered runner with project ID: %d", project_id)

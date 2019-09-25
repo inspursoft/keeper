@@ -224,6 +224,12 @@ def insert_note_template(name, template, app):
 def update_runner_token(runner_token, project_id, app):
   proxied_execute(app, 'update project set runner_token = ? where project_id = ?', (runner_token, project_id))
 
+def insert_ip_provision(ip_address, project_id, app):
+  proxied_execute(app, 'replace into ip_provision (ip_address, project_id) values (?, ?)', (ip_address, project_id))
+
+def delete_ip_provision(project_id, app):
+  proxied_execute(app, 'delete from ip_provision where project_id = ?', (project_id,))
+
 def insert_ip_runner(ip_provision_id, pipeline_id, app):
   proxied_execute(app, 'insert into ip_runner (ip_provision_id, pipeline_id) values (?, ?)', (ip_provision_id, pipeline_id))
 

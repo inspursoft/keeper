@@ -359,3 +359,32 @@ def prepare_runner():
   except Exception as e:
     current_app.logger.error("Failed to prepare runner: %s", e)
     return abort(500, e)
+
+@bp.route("/runners/register", methods=["POST", "DELETE"])
+def register_runner():
+  username = request.args.get("username", None)
+  if not username:
+    return abort(400, "Username is required.")
+  project_name = request.args.get("project_name", None)
+  if not project_name:
+    return abort(400, "Project name is required.")
+  config = request.get_json()
+  if not config:
+    return abort(400, "Runner config is required.")
+  if "ip_address" not in config:
+    return abort(400, "IP address is required.")
+  if "runner_token" not in config:
+    return abort(400, "Runner token is required.")
+  try:
+    if request.method == "POST":
+      KeeperManager.register_runner(username, project_name, config, current_app)
+      return "Successful registered runner."
+    elif request.method == "DELETE":
+      KeeperManager.unregister_runner(username, project_name, current_app)
+      return "Successful unregistered runner."
+  except KeeperException as e:
+    current_app.logger.error("Failed to register runner: %s", e)
+    return abort(500, e)
+  
+  
+
