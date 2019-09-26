@@ -318,7 +318,9 @@ def prepare_runner():
   abbr_name = project["name"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
   if "pre-merge-requests" in stages:
+    current_app.logger.debug("Pipeline started with pre-merge requests...")
     try:
+      username = base_repo_name
       project_name = "%s/%s" % (base_repo_name, abbr_name)
       project = KeeperManager.resolve_user_project(base_repo_name, project_name, current_app)
       project_id = project.project_id
