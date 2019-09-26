@@ -320,10 +320,6 @@ def prepare_runner():
   if "pre-merge-requests" in stages:
     current_app.logger.debug("Pipeline started with pre-merge requests...")
     try:
-      username = base_repo_name
-      project_name = "%s/%s" % (base_repo_name, abbr_name)
-      project = KeeperManager.resolve_user_project(base_repo_name, project_name, current_app)
-      project_id = project.project_id
       vm_base_name = "%s-runner-%s" % (abbr_name, base_repo_name)
     except KeeperException as e:
       current_app.logger.error(e)
@@ -361,8 +357,7 @@ def prepare_runner():
       "vm_memory": get_info("VM_CONF")["VM_MEMORY"],
       "vm_ip": ip_provision.ip_address,
       "runner_name": vm_name,
-      "runner_tag": "%s-vm" % (vm_base_name),
-      "runner_token": KeeperManager.resolve_runner_token(username, project_name, current_app)
+      "runner_tag": "%s-vm" % (vm_base_name)
     }
     request_url = urljoin("http://localhost:5000", url_for("vm.vm", name=vm_name, username=username, project_id=project_id, project_name=project_name, status=status))
     resp = requests.post(request_url, json=vm_conf, params={"ip_provision_id": ip_provision.id, "pipeline_id": pipeline_id})
