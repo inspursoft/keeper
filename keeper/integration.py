@@ -299,6 +299,9 @@ def runner_probe():
 
 @bp.route("/runners", methods=["POST"])
 def prepare_runner():
+  base_repo_name = request.args.get("base_repo_name", None)
+  if not base_repo_name:
+    return abort(400, "Base repo name is required.")
   username = request.args.get("username", None)
   if not username:
     return abort(400, "Username is required.")
@@ -309,14 +312,22 @@ def prepare_runner():
   object_attr = data["object_attributes"]
   pipeline_id = object_attr["id"]
   status = object_attr["status"]
+  stages = object_attr["stages"]
   project_name = project["path_with_namespace"]
   builds = data["builds"]
   abbr_name = project["name"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
+  if "pre-merge-requests" in stages:
+    try:
+      project_name = "%s/%s" % (base_repo_name, abbr_name)
+      project = KeeperManager.resolve_user_project(base_repo_name, project_name, current_app)
+      project_id = project.project_id
+      vm_base_name = "%s-runner-%s" % (abbr_name, base_repo_name)
+    except KeeperException as e:
+      current_app.logger.error(e)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
-  
   probe_request_url = urljoin("http://localhost:5000", url_for(".runner_probe", project_id=project_id, vm_name=vm_name, status=status))
-  def callback():  
+  def callback():
     resp = requests.get(probe_request_url)
     message = "Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code)
   threading.Thread(target=callback).start()
