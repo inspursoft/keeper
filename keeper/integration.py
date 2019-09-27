@@ -394,5 +394,20 @@ def register_runner():
     current_app.logger.error("Failed to register runner: %s", e)
     return abort(500, e)
   
-  
-
+@bp.route("/merge-request/relate-issue", methods=["POST"])
+def relate_issue_to_merge_request():
+  data = request.get_json()
+  current_app.logger.debug(data)
+  project = data["project"]
+  object_attr = data["object_attributes"]
+  project_id = project["id"]
+  merge_request_id = object_attr["iid"]
+  state = object_attr["state"]
+  if state not in ["opened"]:
+    return "No need to relate issue as current state is %s" % (state,)
+  try:
+    KeeperManager.create_discussion_to_merge_request(project_id, merge_request_id, "Start to discuss...", current_app)
+    return "Successful related issue to merge request."
+  except KeeperException as e:
+    current_app.logger.error("Failed to relate issue to merge request: %s", e)
+    return abort(e.code, e.message)

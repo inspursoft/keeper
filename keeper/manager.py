@@ -314,6 +314,18 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET', params=params)
 
   @staticmethod
+  def create_discussion_to_merge_request(project_id, merge_request_id, comments, app):
+    app.logger.debug("Create discussion to merge request with project ID: %d, merge request ID: %d", project_id, merge_request_id)
+    request_url = "%s/projects/%d/merge_requests/%d/discussions" % (KeeperManager.get_gitlab_api_url(), project_id, merge_request_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, params={"body": comments})
+
+  @staticmethod
+  def create_related_issue_to_merge_request(project_id, merge_request_id, title, app):
+    app.logger.debug("Create related issue to merge request ID: %d", merge_request_id)
+    request_url = "%s/projects/%d/issues" % (KeeperManager.get_gitlab_api_url(), project_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, params={"merge_request_to_resolve_discussions_of": merge_request_id, "discussion_to_resolve": "LGTM", "title": title})
+
+  @staticmethod
   def resolve_token(username, app):
     user = KeeperManager.resolve_user(username, app)
     return user.token
