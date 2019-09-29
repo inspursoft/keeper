@@ -149,12 +149,18 @@ def issue_open_peer():
     return abort(400, "Default assignee is required.")
   
   data = request.get_json()
+  current_app.logger.debug(data)
+  
   project = data["project"]
   project_id = project["id"]
   project_name = project["name"]
   object_attr = data["object_attributes"]
   issue_iid = object_attr["iid"]
+  title = object_attr["title"]
+  labels = data["labels"]
   issue_title = 'issue as branch'
+  if title.find("Follow-up from") >= 0:
+    return "Bypass for automatic generated issue with title: %s" % (title,)
 
   branch_name = KeeperManager.resolve_branch_name("{}-{}".format(issue_iid, issue_title), current_app)
   current_app.logger.debug("Create branch: %s with ref: %s", branch_name, ref)
@@ -182,6 +188,8 @@ def issue_open_peer():
         milestone_id = milestones[-1]["id"]
       KeeperManager.update_issue(project_id, issue_iid, {"assignee_ids": [assignee.user_id], "milestone_id": milestone_id}, current_app)
     KeeperManager.create_branch_per_assignee(project_name, assignee_id, branch_name, ref, current_app)
+    due_date = KeeperManager.resolve_due_date_per_label(labels, current_app)
+    KeeperManager.update_issue(project_id, issue_iid, {"due_date": due_date}, current_app)
     return jsonify(message="Successful created branch: %s per assignee ID: %d" % (branch_name, assignee_id))
   except KeeperException as e:
     current_app.logger.error(e)
@@ -386,10 +394,14 @@ def register_runner():
   try:
     if request.method == "POST":
       KeeperManager.register_runner(username, project_name, config, current_app)
-      return "Successful registered runner."
+      message = "Successful registered runner."
+      current_app.logger.debug(message)
+      return message
     elif request.method == "DELETE":
       KeeperManager.unregister_runner(username, project_name, current_app)
-      return "Successful unregistered runner."
+      message = "Successful unregistered runner."
+      current_app.logger.debug(message)
+      return message
   except KeeperException as e:
     current_app.logger.error("Failed to register runner: %s", e)
     return abort(500, e)
@@ -403,11 +415,21 @@ def relate_issue_to_merge_request():
   project_id = project["id"]
   merge_request_id = object_attr["iid"]
   state = object_attr["state"]
+  source = object_attr["source"]
+  target = object_attr["target"]
   if state not in ["opened"]:
-    return "No need to relate issue as current state is %s" % (state,)
+    message = "No need to relate issue as current state is %s" % (state,)
+    current_app.logger.debug(message)
+    return message
+  if source["id"] == target["id"]:
+    message = "No need to relate issue as same repos."
+    current_app.logger.debug(message)
+    return message
   try:
     KeeperManager.create_discussion_to_merge_request(project_id, merge_request_id, "Start to discuss...", current_app)
-    return "Successful related issue to merge request."
+    message = "Successful related issue to merge request."
+    current_app.logger.debug(message)
+    return message
   except KeeperException as e:
     current_app.logger.error("Failed to relate issue to merge request: %s", e)
     return abort(e.code, e.message)

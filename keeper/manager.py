@@ -10,6 +10,7 @@ import re
 from urllib import parse
 import os
 from json.decoder import JSONDecodeError
+from datetime import datetime, timedelta
 
 class KeeperException(Exception):
   def __init__(self, code, message):
@@ -263,6 +264,29 @@ class KeeperManager:
     except KeeperException as e:
       app.logger.error("Branch: %s already exist to project: %s for assignee: %s ", branch_name, project_name, assignee)
     return KeeperManager.create_branch(target_project_id, branch_name, ref, app)
+
+  @staticmethod
+  def resolve_due_date_per_label(labels, app, legend="!"):
+    if len(labels) == 0:
+      app.logger.debug("No need to set due date as it has no label.")
+      return ""
+    labels.sort(key=lambda d: d["title"].count(legend), reverse=True)
+    for c in labels:
+      title = c["title"]
+      if title.count(legend) == 0:
+        app.logger.debug("No need to set due date as it is not urgent.")
+        continue
+      created_at = c["created_at"]
+      c_time = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S %Z")
+      if title.count(legend) >= 3:
+        c_time += timedelta(days=0)
+      elif title.count(legend) == 2:
+        c_time += timedelta(days=1)
+      elif title.count(legend) == 1:
+        c_time += timedelta(days=2)
+      app.logger.debug("Set due date to today as the title is: %s", title)
+      due_date = datetime.strftime(c_time, "%Y-%m-%d")
+      return due_date
 
   @staticmethod
   def get_branch(project_id, branch_name, app):
