@@ -155,13 +155,21 @@ def issue_open_peer():
   project_id = project["id"]
   project_name = project["name"]
   object_attr = data["object_attributes"]
+  action = object_attr["action"]
   issue_iid = object_attr["iid"]
   title = object_attr["title"]
   labels = data["labels"]
   issue_title = 'issue as branch'
-  if title.find("Follow-up from") >= 0:
-    return "Bypass for automatic generated issue with title: %s" % (title,)
 
+  if action not in ["open"]:
+    message = "Bypass for inrelevant action: %s in openning issue." % (action,)
+    current_app.logger.debug(message)
+    return message
+
+  if title.find("Follow-up from") >= 0:
+    message = "Bypass for automatic generated issue with title: %s" % (title,)
+    current_app.logger.debug(message)
+    return message
   branch_name = KeeperManager.resolve_branch_name("{}-{}".format(issue_iid, issue_title), current_app)
   current_app.logger.debug("Create branch: %s with ref: %s", branch_name, ref)
   try:
@@ -187,6 +195,7 @@ def issue_open_peer():
           return abort(404, "No active milestones found with project ID: %d" % (project_id))
         milestone_id = milestones[-1]["id"]
       KeeperManager.update_issue(project_id, issue_iid, {"assignee_ids": [assignee.user_id], "milestone_id": milestone_id}, current_app)
+    
     KeeperManager.create_branch_per_assignee(project_name, assignee_id, branch_name, ref, current_app)
     due_date = KeeperManager.resolve_due_date_per_label(labels, current_app)
     KeeperManager.update_issue(project_id, issue_iid, {"due_date": due_date}, current_app)

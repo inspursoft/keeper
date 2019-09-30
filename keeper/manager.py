@@ -252,7 +252,12 @@ class KeeperManager:
 
   @staticmethod
   def create_branch_per_assignee(project_name, assignee_id, branch_name, ref, app):
-    r = db.get_project_by_user_id(project_name, assignee_id)
+    r = db.get_user_by_id(assignee_id)
+    if not r:
+      app.logger.error("Failed to get user by assignee ID: %d", assignee_id)
+      raise KeeperException(404, "Failed to get user by assignee ID: %d" % (assignee_id,))
+    repo_name = "%s/%s" % (r["username"], project_name)
+    r = db.get_project_by_user_id(repo_name, assignee_id)
     if r is None:
       app.logger.error("Failed to get project by assignee ID: %d", assignee_id)
       raise KeeperException(404, "Failed to get project by assignee ID: %s" % (assignee_id,))
@@ -262,7 +267,7 @@ class KeeperManager:
     try:
       KeeperManager.get_branch(target_project_id, branch_name, app)
     except KeeperException as e:
-      app.logger.error("Branch: %s already exist to project: %s for assignee: %s ", branch_name, project_name, assignee)
+      app.logger.error("Branch: %s already exist to project: %s for assignee: %s, with error: %s", branch_name, project_name, assignee, e)
     return KeeperManager.create_branch(target_project_id, branch_name, ref, app)
 
   @staticmethod

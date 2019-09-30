@@ -46,6 +46,11 @@ def get_user_token_by_project(project_id):
     '''select u.token as token from user u left join user_project up on u.user_id = up.user_id where up.project_id = ?''', (project_id,)
   ).fetchone()
 
+def get_user_by_id(user_id):
+  return get_db().execute(
+    '''select user_id, username, token from user where user_id = ?''', (user_id,)
+  ).fetchone()
+
 def get_vm(name):
   vm = get_db().execute(
     '''select v.vm_id , v.vm_name, v.target, v.keeper_url, vs.snapshot_name from vm v
@@ -73,7 +78,7 @@ def get_project_by_user_id(project_name, user_id):
          from project p
            left join user_project up on up.project_id = p.project_id
            left join user u on up.user_id = u.user_id
-         where p.project_name like ? and u.user_id = ?''', ('%{}'.format(project_name), user_id)
+         where p.project_name = ? and u.user_id = ?''', (project_name, user_id)
   ).fetchone()
 
 def get_project_runner_by_name(runner_name):
