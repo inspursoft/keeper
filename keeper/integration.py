@@ -77,7 +77,7 @@ def issue():
     return jsonify(message="No need to create branch with openning issue.")
 
   try:
-    branch_name = KeeperManager.resolve_branch_name(s_title[len(open_branch_prefix):])
+    branch_name = KeeperManager.resolve_branch_name(s_title[len(open_branch_prefix):], current_app)
     KeeperManager.create_branch(project_id, branch_name, ref, current_app)
     KeeperManager.comment_on_issue(username, project_id, issue_iid, "Branch: %s has been created." % (branch_name,), current_app)
     return jsonify(message="Successful created branch with issue.")

@@ -473,7 +473,7 @@ class KeeperManager:
 
   @staticmethod
   def update_runner_token(username, project_id, project_name, runner_token, app):
-    project = KeeperManager.resolve_user_project(username, project_name, app, project_id=project_id)
+    project = KeeperManager.resolve_user_project(username, project_name, app)
     db.update_runner_token(runner_token, project.project_id, app)
 
   @staticmethod
