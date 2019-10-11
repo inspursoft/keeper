@@ -569,20 +569,16 @@ class KeeperManager:
     project = KeeperManager.resolve_project(username, project_name, app)
     project_id = project.project_id
     runner_token = config["runner_token"]
-    ip_address = config["ip_address"]
     def t_callback():
       db.update_runner_token(runner_token, project_id, app)
-      db.insert_ip_provision(ip_address, app)
     db.DBT.execute(app, t_callback)
-    app.logger.debug("Registered runner with project ID: %d, IP: %s and token: %s", project_id, ip_address, runner_token)
+    app.logger.debug("Registered runner with project ID: %d and token: %s", project_id, runner_token)
 
   @staticmethod
-  def unregister_runner(username, project_name, config, app):
+  def unregister_runner(username, project_name, app):
     project = KeeperManager.resolve_project(username, project_name, app)
     project_id = project.project_id
-    ip_address = config["ip_address"]
     def t_callback():
-      db.delete_ip_provision(ip_address, app)
       db.remove_ip_runner_by_project_id(project_id, app)
       db.update_runner_token(None, project_id, app)
     db.DBT.execute(app, t_callback)

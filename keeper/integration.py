@@ -394,21 +394,19 @@ def register_runner():
   project_name = request.args.get("project_name", None)
   if not project_name:
     return abort(400, "Project name is required.")
-  config = request.get_json()
-  if not config:
-    return abort(400, "Runner config is required.")
-  if "ip_address" not in config:
-    return abort(400, "IP address is required.")
-  if "runner_token" not in config:
-    return abort(400, "Runner token is required.")
   try:
     if request.method == "POST":
+      config = request.get_json()
+      if not config:
+        return abort(400, "Runner config is required.")
+      if "runner_token" not in config:
+        return abort(400, "Runner token is required.")
       KeeperManager.register_runner(username, project_name, config, current_app)
       message = "Successful registered runner."
       current_app.logger.debug(message)
       return message
     elif request.method == "DELETE":
-      KeeperManager.unregister_runner(username, project_name, config, current_app)
+      KeeperManager.unregister_runner(username, project_name, current_app)
       message = "Successful unregistered runner."
       current_app.logger.debug(message)
       return message
