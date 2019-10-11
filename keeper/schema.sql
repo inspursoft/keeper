@@ -65,13 +65,13 @@ create table note_template (
 
 create table ip_provision (
   id integer primary key autoincrement,
-  project_id integer not null,
   ip_address text unique not null,
   is_allocated integer default 0
 );
 
 create table ip_runner (
   ip_provision_id integer not null,
+  project_id integer not null,
   runner_id integer,
   pipeline_id integer not null
 );

@@ -271,7 +271,7 @@ class KeeperManager:
     return KeeperManager.create_branch(target_project_id, branch_name, ref, app)
 
   @staticmethod
-  def resolve_due_date_per_label(labels, app, legend="!"):
+  def resolve_due_date(created_at, labels, app, legend="!"):
     if len(labels) == 0:
       app.logger.debug("No need to set due date as it has no label.")
       return ""
@@ -281,7 +281,6 @@ class KeeperManager:
       if title.count(legend) == 0:
         app.logger.debug("No need to set due date as it is not urgent.")
         continue
-      created_at = c["created_at"]
       c_time = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S %Z")
       if title.count(legend) >= 3:
         c_time += timedelta(days=0)
@@ -522,10 +521,13 @@ class KeeperManager:
 
   @staticmethod
   def get_ip_provision(project_id, app):
-    r = db.get_available_ip_by_project(project_id)
-    if not r["id"]:
-      raise KeeperException(404, "No IP provision found currently.")
-    return IPProvision(r["id"], r["project_id"], r["ip_address"])
+    r = db.get_reserved_runner_by_project(project_id)
+    if not r:
+      r = db.get_available_ip()
+      if not r["id"]:
+        raise KeeperException(404, "No IP provision found currently.")
+      return IPProvision(r["id"], r["ip_address"])
+    raise KeeperException(409, "IP runner already reserved.")
 
   @staticmethod
   def reserve_ip_provision(ip_provision_id, app):
@@ -540,8 +542,8 @@ class KeeperManager:
     return False
   
   @staticmethod
-  def register_ip_runner(ip_provision_id, pipeline_id, app):
-    db.insert_ip_runner(ip_provision_id, pipeline_id, app)
+  def register_ip_runner(ip_provision_id, pipeline_id, project_id, app):
+    db.insert_ip_runner(ip_provision_id, pipeline_id, project_id, app)
 
   @staticmethod
   def update_ip_runner(ip_provision_id, runner_id, app):
@@ -558,17 +560,10 @@ class KeeperManager:
     if r:
       ip_provision_id = r["ip_provision_id"]
       ip_address = r["ip_address"]
-      project_id = r["project_id"]
       db.update_ip_provision_by_id(ip_provision_id, 0, app)
       db.remove_ip_runner(ip_provision_id, app)
-      app.logger.debug("Released IP: %s with project ID: %d as %s.", ip_address, project_id, status)
+      app.logger.debug("Released IP: %s as %s.", ip_address, status)
       
-  @staticmethod
-  def release_ip_runner_on_cancel(project_id, status, app):
-    db.update_ip_provision_by_project_id(project_id, 0, app)
-    db.remove_ip_runner_by_project_id(project_id, app)
-    app.logger.debug("Release IP with project ID: %d as %s.", project_id, status)
-    
   @staticmethod
   def register_runner(username, project_name, config, app):
     project = KeeperManager.resolve_project(username, project_name, app)
@@ -577,16 +572,17 @@ class KeeperManager:
     ip_address = config["ip_address"]
     def t_callback():
       db.update_runner_token(runner_token, project_id, app)
-      db.insert_ip_provision(ip_address, project_id, app)
+      db.insert_ip_provision(ip_address, app)
     db.DBT.execute(app, t_callback)
     app.logger.debug("Registered runner with project ID: %d, IP: %s and token: %s", project_id, ip_address, runner_token)
 
   @staticmethod
-  def unregister_runner(username, project_name, app):
+  def unregister_runner(username, project_name, config, app):
     project = KeeperManager.resolve_project(username, project_name, app)
     project_id = project.project_id
+    ip_address = config["ip_address"]
     def t_callback():
-      db.delete_ip_provision(project_id, app)
+      db.delete_ip_provision(ip_address, app)
       db.remove_ip_runner_by_project_id(project_id, app)
       db.update_runner_token(None, project_id, app)
     db.DBT.execute(app, t_callback)

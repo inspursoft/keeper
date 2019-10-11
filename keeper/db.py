@@ -156,18 +156,24 @@ def get_note_template(name):
          where template_name = ? ''', (name,)
   ).fetchone()
 
-def get_available_ip_by_project(project_id):
+def get_available_ip():
   return get_db().execute(
-    '''select min(ip.id) id, min(ip.ip_address) ip_address, min(ip.project_id) project_id
+    '''select min(ip.id) id, min(ip.ip_address) ip_address
           from ip_provision ip 
          left join ip_runner ir on ir.ip_provision_id = ip.id
-         where  ip.is_allocated = 0
-            and ip.project_id = ?''', (project_id,)
+         where  ip.is_allocated = 0'''
+  ).fetchone()
+
+def get_reserved_runner_by_project(project_id):
+  return get_db().execute(
+    '''select ip_provision_id, project_id, runner_id, pipeline_id
+          from ip_runner
+         where project_id = ?''', (project_id,)
   ).fetchone()
 
 def get_ip_provision_by_pipeline(pipeline_id):
   return get_db().execute(
-    '''select ir.ip_provision_id, ir.pipeline_id, ip.ip_address, ip.project_id from ip_runner ir
+    '''select ir.ip_provision_id, ir.pipeline_id, ip.ip_address from ip_runner ir
           left join ip_provision ip on ip.id = ir.ip_provision_id
           where ir.pipeline_id = ?
     ''',(pipeline_id,)
@@ -229,14 +235,14 @@ def insert_note_template(name, template, app):
 def update_runner_token(runner_token, project_id, app):
   proxied_execute(app, 'update project set runner_token = ? where project_id = ?', (runner_token, project_id))
 
-def insert_ip_provision(ip_address, project_id, app):
-  proxied_execute(app, 'replace into ip_provision (ip_address, project_id) values (?, ?)', (ip_address, project_id))
+def insert_ip_provision(ip_address, app):
+  proxied_execute(app, 'replace into ip_provision (ip_address) values (?)', (ip_address,))
 
-def delete_ip_provision(project_id, app):
-  proxied_execute(app, 'delete from ip_provision where project_id = ?', (project_id,))
+def delete_ip_provision(ip_address, app):
+  proxied_execute(app, 'delete from ip_provision where ip_address = ?', (ip_address,))
 
-def insert_ip_runner(ip_provision_id, pipeline_id, app):
-  proxied_execute(app, 'insert into ip_runner (ip_provision_id, pipeline_id) values (?, ?)', (ip_provision_id, pipeline_id))
+def insert_ip_runner(ip_provision_id, pipeline_id, project_id, app):
+  proxied_execute(app, 'insert into ip_runner (ip_provision_id, pipeline_id, project_id) values (?, ?, ?)', (ip_provision_id, pipeline_id, project_id))
 
 def update_ip_runner(ip_provision_id, runner_id, app):
   proxied_execute(app, 'update ip_runner set runner_id = ? where ip_provision_id = ?', (runner_id, ip_provision_id))
@@ -253,9 +259,6 @@ def remove_ip_runner_by_project_id(project_id, app):
 
 def update_ip_provision_by_id(ip_provision_id, is_allocated, app):
   proxied_execute(app, 'update ip_provision set is_allocated = ? where id = ?', (is_allocated, ip_provision_id))
-
-def update_ip_provision_by_project_id(project_id, is_allocated, app):
-  proxied_execute(app, 'update ip_provision set is_allocated = ? where project_id = ?', (is_allocated, project_id))
 
 class DBT:
   conn = None

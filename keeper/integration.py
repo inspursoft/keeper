@@ -159,9 +159,10 @@ def issue_open_peer():
   issue_iid = object_attr["iid"]
   title = object_attr["title"]
   labels = data["labels"]
+  created_at = object_attr["created_at"]
   issue_title = 'issue as branch'
 
-  if action not in ["open"]:
+  if action not in ["open", "update"]:
     message = "Bypass for inrelevant action: %s in openning issue." % (action,)
     current_app.logger.debug(message)
     return message
@@ -197,7 +198,7 @@ def issue_open_peer():
       KeeperManager.update_issue(project_id, issue_iid, {"assignee_ids": [assignee.user_id], "milestone_id": milestone_id}, current_app)
     
     KeeperManager.create_branch_per_assignee(project_name, assignee_id, branch_name, ref, current_app)
-    due_date = KeeperManager.resolve_due_date_per_label(labels, current_app)
+    due_date = KeeperManager.resolve_due_date(created_at, labels, current_app)
     KeeperManager.update_issue(project_id, issue_iid, {"due_date": due_date}, current_app)
     return jsonify(message="Successful created branch: %s per assignee ID: %d" % (branch_name, assignee_id))
   except KeeperException as e:
@@ -359,7 +360,7 @@ def prepare_runner():
   try:
     ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
     KeeperManager.reserve_ip_provision(ip_provision.id, current_app)
-    KeeperManager.register_ip_runner(ip_provision.id, pipeline_id, current_app)
+    KeeperManager.register_ip_runner(ip_provision.id, pipeline_id, project_id, current_app)
   except KeeperException as e:
     current_app.logger.error(e.message)
     KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)
@@ -407,7 +408,7 @@ def register_runner():
       current_app.logger.debug(message)
       return message
     elif request.method == "DELETE":
-      KeeperManager.unregister_runner(username, project_name, current_app)
+      KeeperManager.unregister_runner(username, project_name, config, current_app)
       message = "Successful unregistered runner."
       current_app.logger.debug(message)
       return message

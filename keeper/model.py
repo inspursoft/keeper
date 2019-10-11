@@ -105,12 +105,11 @@ class ProjectRunner:
     return "Project runner - project ID: %d, runner ID: %d" % (self.project_id, self.runner_id)
 
 class IPProvision:
-  __slots__ = "id", "project_id", "ip_address"
+  __slots__ = "id", "ip_address"
   
-  def __init__(self, id, project_id, ip_address):
+  def __init__(self, id, ip_address):
     self.id = id
-    self.project_id = project_id
     self.ip_address = ip_address
   
   def __str__(self):
-    return "IP provision - ID: %d, project ID: %d, IP address: %s" % (self.id, self.project_id, self.ip_address)
+    return "IP provision - ID: %d, IP address: %s" % (self.id, self.ip_address)
