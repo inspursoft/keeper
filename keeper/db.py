@@ -43,7 +43,7 @@ def get_user_info(username):
 
 def get_user_token_by_project(project_id):
   return get_db().execute(
-    '''select u.token as token from user u left join user_project up on u.user_id = up.user_id where up.project_id = ?''', (project_id,)
+    '''select u.token as token from user u join user_project up on u.user_id = up.user_id where up.project_id = ?''', (project_id,)
   ).fetchone()
 
 def get_user_by_id(user_id):
