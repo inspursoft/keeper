@@ -271,26 +271,28 @@ class KeeperManager:
     return KeeperManager.create_branch(target_project_id, branch_name, ref, app)
 
   @staticmethod
-  def resolve_due_date(created_at, labels, app, legend="!"):
+  def resolve_due_date(created_at, labels, app):
     if len(labels) == 0:
+      message = "No need to set due date as it has no label."
       app.logger.debug("No need to set due date as it has no label.")
-      return ""
-    labels.sort(key=lambda d: d["title"].count(legend), reverse=True)
+      raise KeeperException(404, message)
+
+    due_date = ""
     for c in labels:
-      title = c["title"]
-      if title.count(legend) == 0:
-        app.logger.debug("No need to set due date as it is not urgent.")
+      title = c["title"].lower()
+      if title not in ["critical"]:
+        app.logger.debug("No need to set due date as not matched.")
         continue
       c_time = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S %Z")
-      if title.count(legend) >= 3:
+      if title == "critical":
         c_time += timedelta(days=0)
-      elif title.count(legend) == 2:
-        c_time += timedelta(days=1)
-      elif title.count(legend) == 1:
-        c_time += timedelta(days=2)
-      app.logger.debug("Set due date to today as the title is: %s", title)
-      due_date = datetime.strftime(c_time, "%Y-%m-%d")
-      return due_date
+        app.logger.debug("Set due date per label is: %s", title)
+        due_date = datetime.strftime(c_time, "%Y-%m-%d")
+    if due_date == "":
+      message = "No need to set due date as no matched label."
+      app.logger.debug(message)
+      raise KeeperException(404, message)
+    return due_date
 
   @staticmethod
   def get_branch(project_id, branch_name, app):
