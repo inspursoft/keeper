@@ -75,3 +75,10 @@ create table ip_runner (
   runner_id integer,
   pipeline_id integer not null
 );
+
+create table store (
+	category varchar(50) not null,
+	item_key text not null,
+	item_val text,
+	primary key (category, item_key)
+);

@@ -28,6 +28,9 @@ def create_app(test_config=None):
   from keeper import integration
   app.register_blueprint(integration.bp)
   
+  from keeper import assistant
+  app.register_blueprint(assistant.bp)
+
   return app
 
 def get_info(key):

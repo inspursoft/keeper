@@ -260,6 +260,17 @@ def remove_ip_runner_by_project_id(project_id, app):
 def update_ip_provision_by_id(ip_provision_id, is_allocated, app):
   proxied_execute(app, 'update ip_provision set is_allocated = ? where id = ?', (is_allocated, ip_provision_id))
 
+def get_from_store(category, app):
+  return get_db().execute('''
+    select item_key, item_val from store where category = ?
+  ''', (category,)).fetchall()
+
+def insert_into_store(category, key, val, app):
+  proxied_execute(app, 'replace into store (category, item_key, item_val) values (?, ?, ?)', (category, key, val))
+
+def delete_from_store(category, app):
+  proxied_execute(app, 'delete from store where category = ?', (category,))
+
 class DBT:
   conn = None
   @classmethod

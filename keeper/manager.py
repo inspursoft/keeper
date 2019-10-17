@@ -585,3 +585,27 @@ class KeeperManager:
       db.update_runner_token(None, project_id, app)
     db.DBT.execute(app, t_callback)
     app.logger.debug("Unregistered runner with project ID: %d", project_id)
+
+  @staticmethod
+  def get_from_store(category, app):
+    r = db.get_from_store(category, app)
+    if not r or len(r) == 0:
+      message = "None of result for store with category: %s" % (category,)
+      app.logger.error(message)
+      raise KeeperException(404, message)
+    stored = {}
+    for s in r:
+      stored[s["item_key"]] = s["item_val"]
+    return stored
+
+  @staticmethod
+  def add_to_store(category, store, app):
+    for key in store:
+      val = store[key]
+      db.insert_into_store(category, key, val, app)
+      app.logger.debug("Inserted or updated category: %s with key: %s, val: %s", category, key, val)
+  
+  @staticmethod
+  def remove_from_store(category, app):
+    db.delete_from_store(category, app)
+    app.logger.debug("Removed category: %s", category)
