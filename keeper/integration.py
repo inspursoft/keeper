@@ -14,6 +14,7 @@ from keeper.vm import recycle_vm
 import queue
 import time
 import threading
+import requests
 
 bp = Blueprint("integration", __name__ ,url_prefix="/api/v1")
 
@@ -360,3 +361,36 @@ def relate_issue_to_merge_request():
   except KeeperException as e:
     current_app.logger.error("Failed to relate issue to merge request: %s", e)
     return abort(e.code, e.message)
+
+
+@bp.route("/tag/release", methods=["POST"])
+def tag_release():
+  release_repo = request.args.get("release_repo", None)
+  if not release_repo:
+    return abort(400, "Release repo is required.")
+  release_branch = request.args.get("release_branch", None)
+  if not release_branch:
+    return abort(400, "Release branch is required.")
+  username = request.args.get("username", None)
+  if not username:
+    return abort(400, "Username is required.")
+
+  data = request.get_json()
+  current_app.logger.debug(data)
+  checkout_sha = data["checkout_sha"]
+  ref = data["ref"]
+  message = ""
+  if checkout_sha is None:
+    message = "Bypass for none of checkout SHA or ref."
+    return message  
+  try:
+    version_info = ref[ref.rindex("/") + 1:] + "-as-branch"
+    current_app.logger.debug("Version info: %s", version_info)
+    release_url = urljoin("http://localhost:5000", url_for("assistant.release", action="update", operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha,version_info=version_info))
+    current_app.logger.debug("Release URL: %s", release_url)
+    resp = requests.post(release_url)
+    message = "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
+  except KeeperException as e:
+    message = "Failed to tag for release: %s" % (e,)
+    current_app.logger.error(message)
+  return message

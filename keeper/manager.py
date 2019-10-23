@@ -191,17 +191,17 @@ class KeeperManager:
     if r is None:
       app.logger.error("Failed to get token with principle: %r", principle)
       raise KeeperException(404, "Failed to get token with principle: %r" % (principle,))
-    app.logger.debug("Got token: %s", r['token'])
+    app.logger.debug("Got token: %s, params: %s", r['token'], params)
     resp = None
     default_headers={"PRIVATE-TOKEN": r['token']}
     if method == 'POST':
-      resp = requests.post(request_url, headers=default_headers, params=params)
+      resp = requests.post(request_url, headers=default_headers, json=params)
     elif method == 'GET':
-      resp = requests.get(request_url, headers=default_headers, params=params)
+      resp = requests.get(request_url, headers=default_headers)
     elif method == 'PUT':
-      resp = requests.put(request_url, headers=default_headers, params=params)
+      resp = requests.put(request_url, headers=default_headers, json=params)
     elif method == 'DELETE':
-      resp = requests.delete(request_url, headers=default_headers, params=params)
+      resp = requests.delete(request_url, headers=default_headers)
     if resp.status_code >= 400:
       app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
       raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
@@ -246,8 +246,36 @@ class KeeperManager:
 
   @staticmethod
   def create_branch(project_id, branch_name, ref, app):
-    app.logger.debug("Create branch: %s from %s with project_id: %d", branch_name, ref, project_id)
+    app.logger.debug("Create branch: %s from %s with project ID: %d", branch_name, ref, project_id)
     request_url = "%s/projects/%d/repository/branches?branch=%s&ref=%s" % (KeeperManager.get_gitlab_api_url(), project_id, branch_name, ref)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app)
+
+  @staticmethod
+  def commit_files(project_id, branch_name, commit_message, actions, app):
+    app.logger.debug("Commit files to the branch: %s with project ID: %d", branch_name, project_id)
+    request_url = "%s/projects/%d/repository/commits" % (KeeperManager.get_gitlab_api_url(), project_id)
+    params = {"branch": branch_name, "start_branch": branch_name, "commit_message": commit_message, "actions": actions}
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, params=params)
+
+  @staticmethod
+  def resolve_action_from_store(category, file_type, app):
+    store = KeeperManager.get_from_store(category, app)
+    contents = ""
+    if file_type == ".sh":
+      contents = "!/bin/bash\n"
+    for key in store:
+      if file_type == ".md":
+        contents += "*" + " " + key + ":" + store[key]
+      elif file_type == ".sh":
+        contents += key + "=" + '"{}"'.format(store[key])
+      contents += "\n"
+    app.logger.debug("Generated contents with file type: %s, content: %s", file_type, contents)
+    return contents
+
+  @staticmethod
+  def create_merge_request(project_id, source_branch, target_branch, title, description, app):
+    app.logger.debug("Create merge request from branch: %s to %s, with title: %s, description: %s and project ID: %d", source_branch, target_branch, title, description, project_id)
+    request_url = "%s/projects/%d/merge_requests?source_branch=%s&target_branch=%s&title=%s&description=%s" % (KeeperManager.get_gitlab_api_url(), project_id, source_branch, target_branch, title, description)
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
 
   @staticmethod

@@ -1,10 +1,12 @@
 from flask import (
-  Blueprint, abort, request, current_app, jsonify
+  Blueprint, abort, request, current_app, jsonify, url_for
 )
 
 from keeper.manager import *
 from werkzeug.utils import secure_filename
 import tarfile
+from urllib.parse import urljoin
+import time
 
 bp = Blueprint("assistant", __name__, url_prefix="/api/v1")
 
@@ -110,3 +112,38 @@ def store():
       return jsonify(KeeperManager.get_from_store(category, current_app))
   except KeeperException as e:
     return abort(e.code, "Failed to manipulate store: %s"% (e.message,))
+
+@bp.route("/release/<action>", methods=["POST"])
+def release(action):
+  if not action:
+    return abort(400, "Bad request action for release.")
+  operator = request.args.get("operator")
+  if not operator:
+    return abort(400, "Operator is required.")
+  release_branch = request.args.get("release_branch")
+  if not release_branch:
+    return abort("Release branch is required.")
+  release_repo = request.args.get("release_repo")
+  if not release_repo:
+    return abort(400, "Release repo is required.")
+  version_info = request.args.get("version_info")
+  if not version_info:
+    return abort(400, "Version info is required.")
+  category = request.args.get("category")
+  if not category:
+    return abort(400, "Category is required.")
+  try:
+    project = KeeperManager.resolve_project(operator, release_repo, current_app)
+    project_id = project.project_id  
+    KeeperManager.create_branch(project_id, version_info, release_branch, current_app)
+    actions = []
+    actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
+    actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
+    commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), actions, current_app)
+    current_app.logger.debug(commit_info)
+    message = "Successful %s release." % (action)
+    current_app.logger.debug(message)
+  except KeeperException as e:
+    message = "Failed to %s release with error: %s" % (action, e)
+    current_app.logger.error(message)
+  return message
