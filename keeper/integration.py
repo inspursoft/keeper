@@ -207,7 +207,7 @@ def issue_open_peer():
     current_app.logger.error(e)
     return abort(e.code, e.message)
 
-q = queue.Queue()
+q = queue.PriorityQueue()
 
 @bp.route("/runners/probe")
 def runner_probe():
@@ -223,15 +223,16 @@ def runner_probe():
   while not q.empty():
     try:
       ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
-      pipeline_id = q.get()
-      current_app.logger.debug("Got pipeline ID: %d from queue.", pipeline_id)
+      pipeline_task = q.get()
+      pipeline_id = pipeline_task.id
+      current_app.logger.debug("Got pipeline ID: %d from queue with priority: %d", pipeline_id, pipeline_task.priority)
       try:
         KeeperManager.retry_pipeline(int(project_id), pipeline_id, current_app)
       except KeeperException as e:
         current_app.logger.error(e.message)
     except KeeperException as e:
       current_app.logger.debug("Waiting for release IP to retry pipelines ...")
-    time.sleep(4)
+    time.sleep(4.0)
   return "None of queued pipelines."
 
 @bp.route("/runners", methods=["POST"])
@@ -284,8 +285,9 @@ def prepare_runner():
     current_app.logger.error(e.message)
     KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)
     if not KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
-      current_app.logger.debug("Pipeline: %d has queued for executing.", pipeline_id)
-      q.put(pipeline_id)
+      project = KeeperManager.resolve_project_with_priority(username, project_name, current_app)
+      current_app.logger.debug("Pipeline: %d has queued for executing with priority: %d", pipeline_id, project.priority)
+      q.put(PipelineTask(pipeline_id, project.priority))
     return abort(e.code, e.message)
   current_app.logger.debug("Runner with pipeline: %d status is %s, with IP provision ID: %d, IP: %s", pipeline_id, status, ip_provision.id, ip_provision.ip_address)
   try:

@@ -81,6 +81,12 @@ def get_project_by_user_id(project_name, user_id):
          where p.project_name = ? and u.user_id = ?''', (project_name, user_id)
   ).fetchone()
 
+def get_project_with_priority(project_id):
+  return get_db().execute(
+    '''select project_id, project_name, priority from project
+        where project_id = ?''', (project_id,)
+  ).fetchone()
+
 def get_project_runner_by_name(runner_name):
   return get_db().execute(
     '''select p.project_id, r.runner_id, v.vm_id, vs.snapshot_name from runner r
