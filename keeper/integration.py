@@ -383,14 +383,21 @@ def tag_release():
   if checkout_sha is None:
     message = "Bypass for none of checkout SHA or ref."
     return message  
+  current_action = "create"
+  def request_release_url(action):
+    release_url = urljoin("http://localhost:5000", url_for("assistant.release", action=action, operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha, version_info=version_info))
+    current_app.logger.debug("Release URL: %s", release_url)
+    resp = requests.post(release_url)
+    return "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
   try:
     version_info = ref[ref.rindex("/") + 1:] + "-as-branch"
     current_app.logger.debug("Version info: %s", version_info)
-    release_url = urljoin("http://localhost:5000", url_for("assistant.release", action="create", operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha,version_info=version_info))
-    current_app.logger.debug("Release URL: %s", release_url)
-    resp = requests.post(release_url)
-    message = "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
+    message = request_release_url(current_action)
   except KeeperException as e:
-    message = "Failed to tag for release: %s" % (e,)
-    current_app.logger.error(message)
+    current_app.logger.error(e.message)
+    if e.code == 400:
+      current_action = "update"
+      message = request_release_url(current_action)
+    else:
+      message = "Failed to tag for release: %s" % (e,)
   return message
