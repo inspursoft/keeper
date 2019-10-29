@@ -386,7 +386,7 @@ def tag_release():
   try:
     version_info = ref[ref.rindex("/") + 1:] + "-as-branch"
     current_app.logger.debug("Version info: %s", version_info)
-    release_url = urljoin("http://localhost:5000", url_for("assistant.release", action="update", operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha,version_info=version_info))
+    release_url = urljoin("http://localhost:5000", url_for("assistant.release", action="create", operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha,version_info=version_info))
     current_app.logger.debug("Release URL: %s", release_url)
     resp = requests.post(release_url)
     message = "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
