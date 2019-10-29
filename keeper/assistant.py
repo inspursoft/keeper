@@ -132,18 +132,23 @@ def release(action):
   category = request.args.get("category")
   if not category:
     return abort(400, "Category is required.")
+  project = KeeperManager.resolve_project(operator, release_repo, current_app)
+  project_id = project.project_id
   try:
-    project = KeeperManager.resolve_project(operator, release_repo, current_app)
-    project_id = project.project_id  
     KeeperManager.create_branch(project_id, version_info, release_branch, current_app)
-    actions = []
-    actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
-    actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
+  except KeeperException as ke:
+    current_app.logger.error(ke)
+  actions = []
+  actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
+  actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
+  message = ""
+  try:
     commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), actions, current_app)
     current_app.logger.debug(commit_info)
     message = "Successful %s release." % (action)
-    current_app.logger.debug(message)
-  except KeeperException as e:
-    message = "Failed to %s release with error: %s" % (action, e)
-    current_app.logger.error(message)
+  except KeeperException as ke:
+    if ke.code == 400:
+      return abort(ke.code, ke.message)
+    else:
+      message = "Failed to release: %s" % (e,)
   return message

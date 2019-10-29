@@ -242,6 +242,10 @@ def prepare_runner():
   username = request.args.get("username", None)
   if not username:
     return abort(400, "Username is required.")
+  
+  release_repo = request.args.get("release_repo", None)
+  release_branch = request.args.get("release_branch", None)
+
   data = request.get_json()
   current_app.logger.debug(data)
   project = data["project"]
@@ -250,6 +254,9 @@ def prepare_runner():
   pipeline_id = object_attr["id"]
   status = object_attr["status"]
   stages = object_attr["stages"]
+  is_tag = object_attr["tag"]
+  checkout_sha = object_attr["sha"]
+  ref = object_attr["ref"]
   project_name = project["path_with_namespace"]
   builds = data["builds"]
   abbr_name = project["name"]
@@ -261,13 +268,23 @@ def prepare_runner():
     except KeeperException as e:
       current_app.logger.error(e)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
+  current = current_app._get_current_object()
   probe_request_url = urljoin("http://localhost:5000", url_for(".runner_probe", project_id=project_id, vm_name=vm_name, status=status))
   def callback():
     resp = requests.get(probe_request_url)
-    message = "Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code)
+    current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
   threading.Thread(target=callback).start()
 
   if status in ["success", "canceled", "failed"]:
+    current_app.logger.debug("Is Tag: %s, Release repo: %s, release branch: %s" % (is_tag, release_repo, release_branch))
+    if is_tag and release_repo and release_branch:
+      if release_repo.find("/") >= 0:
+        operator = release_repo[:release_repo.index("/")]
+        post_commits_url = urljoin("http://localhost:5000", url_for(".tag_release", release_repo=release_repo, release_branch=release_branch, username=operator))
+        def post_commits_callback():
+          resp = requests.post(post_commits_url, json={"checkout_sha": checkout_sha, "ref": ref})
+          current.logger.debug("Requested URL: %s with status code: %d" % (post_commits_url, resp.status_code))
+        threading.Thread(target=post_commits_callback).start()
     current_app.logger.debug("Runner mission is %s will be removed it...", status)
     recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
@@ -379,25 +396,30 @@ def tag_release():
   current_app.logger.debug(data)
   checkout_sha = data["checkout_sha"]
   ref = data["ref"]
-  message = ""
   if checkout_sha is None:
     message = "Bypass for none of checkout SHA or ref."
-    return message  
-  current_action = "create"
+    return message
+  version_info = ""
+  if ref.find("/") >= 0:
+    version_info = ref[ref.rindex("/") + 1:] + "-as-branch"
+  else:
+    version_info = ref + "-as-branch"
+  current_app.logger.debug("Version info: %s", version_info)
+  message = ""
   def request_release_url(action):
     release_url = urljoin("http://localhost:5000", url_for("assistant.release", action=action, operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha, version_info=version_info))
     current_app.logger.debug("Release URL: %s", release_url)
     resp = requests.post(release_url)
-    return "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
+    message = "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
+    if resp.status_code == 400:
+      raise KeeperException(400, message)
+    return message
   try:
-    version_info = ref[ref.rindex("/") + 1:] + "-as-branch"
-    current_app.logger.debug("Version info: %s", version_info)
-    message = request_release_url(current_action)
+    message = request_release_url("create")
   except KeeperException as e:
     current_app.logger.error(e.message)
     if e.code == 400:
-      current_action = "update"
-      message = request_release_url(current_action)
+      message = request_release_url("update")
     else:
       message = "Failed to tag for release: %s" % (e,)
   return message
