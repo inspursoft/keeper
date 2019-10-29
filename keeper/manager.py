@@ -262,7 +262,7 @@ class KeeperManager:
     store = KeeperManager.get_from_store(category, app)
     contents = ""
     if file_type == ".sh":
-      contents = "!/bin/bash\n"
+      contents = "#!/bin/bash\n"
     for key in store:
       if file_type == ".md":
         contents += "*" + " " + key + ":" + store[key]
