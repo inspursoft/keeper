@@ -242,9 +242,6 @@ def prepare_runner():
   username = request.args.get("username", None)
   if not username:
     return abort(400, "Username is required.")
-  
-  release_repo = request.args.get("release_repo", None)
-  release_branch = request.args.get("release_branch", None)
 
   data = request.get_json()
   current_app.logger.debug(data)
@@ -254,9 +251,6 @@ def prepare_runner():
   pipeline_id = object_attr["id"]
   status = object_attr["status"]
   stages = object_attr["stages"]
-  is_tag = object_attr["tag"]
-  checkout_sha = object_attr["sha"]
-  ref = object_attr["ref"]
   project_name = project["path_with_namespace"]
   builds = data["builds"]
   abbr_name = project["name"]
@@ -274,18 +268,8 @@ def prepare_runner():
     resp = requests.get(probe_request_url)
     current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
   threading.Thread(target=callback).start()
-
   if status in ["success", "canceled", "failed"]:
-    current_app.logger.debug("Is Tag: %s, Release repo: %s, release branch: %s" % (is_tag, release_repo, release_branch))
-    if is_tag and release_repo and release_branch:
-      if release_repo.find("/") >= 0:
-        operator = release_repo[:release_repo.index("/")]
-        post_commits_url = urljoin("http://localhost:5000", url_for(".tag_release", release_repo=release_repo, release_branch=release_branch, username=operator))
-        def post_commits_callback():
-          resp = requests.post(post_commits_url, json={"checkout_sha": checkout_sha, "ref": ref})
-          current.logger.debug("Requested URL: %s with status code: %d" % (post_commits_url, resp.status_code))
-        threading.Thread(target=post_commits_callback).start()
-    current_app.logger.debug("Runner mission is %s will be removed it...", status)
+    current_app.logger.debug("Runner mission is %s will be removing it...", status)
     recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
     current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
@@ -379,7 +363,6 @@ def relate_issue_to_merge_request():
     current_app.logger.error("Failed to relate issue to merge request: %s", e)
     return abort(e.code, e.message)
 
-
 @bp.route("/tag/release", methods=["POST"])
 def tag_release():
   release_repo = request.args.get("release_repo", None)
@@ -394,16 +377,29 @@ def tag_release():
 
   data = request.get_json()
   current_app.logger.debug(data)
-  checkout_sha = data["checkout_sha"]
-  ref = data["ref"]
-  if checkout_sha is None:
-    message = "Bypass for none of checkout SHA or ref."
-    return message
+  object_kind = data["object_kind"]
+  current_app.logger.debug("Current object kind is %s", object_kind)
+
+  checkout_sha = ""
+  ref = ""
   version_info = ""
-  if ref.find("/") >= 0:
-    version_info = ref[ref.rindex("/") + 1:] + "-as-branch"
-  else:
+  if object_kind == "pipeline":
+    object_attr = data["object_attributes"]
+    if not object_attr["tag"]:
+      current_app.logger.debug("Bypass for is not tag.")
+      return "Bypass for pipeline is not tag."
+    current_app.logger.debug("Handle pipeline with tag for release repo: %s, release branch: %s" % (release_repo, release_branch))
+    checkout_sha = object_attr["sha"]
+    ref = object_attr["ref"]
     version_info = ref + "-as-branch"
+  else:
+    checkout_sha = data["checkout_sha"]
+    ref = data["ref"]
+    version_info = ref[ref.rindex("/") + 1:] + "-as-branch"
+
+  if checkout_sha is None:
+    return "Bypass for none of checkout SHA or ref."
+  
   current_app.logger.debug("Version info: %s", version_info)
   message = ""
   def request_release_url(action):
@@ -412,7 +408,7 @@ def tag_release():
     resp = requests.post(release_url)
     message = "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
     if resp.status_code == 400:
-      raise KeeperException(400, message)
+      raise KeeperException(400, resp.text)
     return message
   try:
     message = request_release_url("create")
