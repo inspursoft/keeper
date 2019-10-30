@@ -637,3 +637,12 @@ class KeeperManager:
   def remove_from_store(category, app):
     db.delete_from_store(category, app)
     app.logger.debug("Removed category: %s", category)
+
+  @staticmethod
+  def resolve_project_with_priority(username, project_name, app):
+    project = KeeperManager.resolve_project(username, project_name, app)
+    r = db.get_project_with_priority(project.project_id)
+    if not r:
+      raise KeeperException(400, "Project info is required.")
+    project.priority = r['priority']
+    return project

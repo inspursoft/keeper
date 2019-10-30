@@ -22,9 +22,10 @@ class User:
 
 
 class Project:
-  __slots__ = 'project_id', 'project_name', 'runner_token'
+  __slots__ = 'project_id', 'project_name', 'runner_token', 'priority'
   def __init__(self, project_name):
     self.project_name = project_name
+    self.priority = -1
   
   def __str__(self):
     return "project_id: %d, project_name: %s" % (self.project_id, self.project_name)
@@ -113,3 +114,19 @@ class IPProvision:
   
   def __str__(self):
     return "IP provision - ID: %d, IP address: %s" % (self.id, self.ip_address)
+
+class PipelineTask:
+  __slots__ = "id", "priority"
+
+  def __init__(self, id, priority):
+    self.id = id
+    self.priority = priority
+
+  def __lt__(self, other):
+    return self.priority < other.priority
+
+  def __gt__(self, other):
+    return self.priority > other.priority
+
+  def __eq__(self, other):
+    return self.priority == other.priority

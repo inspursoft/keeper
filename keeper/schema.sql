@@ -82,3 +82,5 @@ create table store (
 	item_val text,
 	primary key (category, item_key)
 );
+
+ALTER TABLE project ADD priority INTEGER DEFAULT 3;
