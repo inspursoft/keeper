@@ -247,6 +247,7 @@ def prepare_runner():
   data = request.get_json()
   current_app.logger.debug(data)
   project = data["project"]
+  abbr_name = project["name"]
   project_name = project["path_with_namespace"]
   project = KeeperManager.resolve_project(username, project_name, current_app)
   if not project:
@@ -257,7 +258,6 @@ def prepare_runner():
   status = object_attr["status"]
   stages = object_attr["stages"]
   builds = data["builds"]
-  abbr_name = project["name"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
   if "pre-merge-requests" in stages:
     current_app.logger.debug("Pipeline started with pre-merge requests...")
