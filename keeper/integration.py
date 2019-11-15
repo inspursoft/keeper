@@ -248,7 +248,7 @@ def prepare_runner():
   current_app.logger.debug(data)
   project = data["project"]
   project_name = project["path_with_namespace"]
-  project = KeeperManager.resolve_project(username, project_name)
+  project = KeeperManager.resolve_project(username, project_name, current_app)
   if not project:
     return abort(400, "Project name: %s does not exist." % (project_name,))
   project_id = project.project_id
