@@ -247,12 +247,15 @@ def prepare_runner():
   data = request.get_json()
   current_app.logger.debug(data)
   project = data["project"]
-  project_id = project["id"]
+  project_name = project["path_with_namespace"]
+  project = KeeperManager.resolve_project(username, project_name)
+  if not project:
+    return abort(400, "Project name: %s does not exist." % (project_name,))
+  project_id = project.project_id
   object_attr = data["object_attributes"]
   pipeline_id = object_attr["id"]
   status = object_attr["status"]
   stages = object_attr["stages"]
-  project_name = project["path_with_namespace"]
   builds = data["builds"]
   abbr_name = project["name"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
