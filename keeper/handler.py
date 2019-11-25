@@ -52,10 +52,10 @@ def snapshot():
     if manager.get_runner_id() is not None:
       manager.toggle_runner('false')
     snapshot_name = manager.get_vm_snapshot_name(vm_name)
-    filepath = os.path.join(os.path.join(current_app.instance_path, '%s-restore-snapshot.sh' % target))
     custom_conf = manager.get_custom_conf()
     if custom_conf:
       current_app.logger.debug("Got custom conf with host: %s, username: %s", custom_conf["HOST"], custom_conf["USERNAME"])
+    filepath = os.path.join(os.path.join(custom_conf["SCRIPT_PATH"], '%s-restore-snapshot.sh' % target))
     current_app.logger.debug(SSHUtil.exec_script(current_app, filepath, vm_runner['vm_id'], snapshot_name, custom_conf=custom_conf))
   except KeeperException as e:
     current_app.logger.error(e)
