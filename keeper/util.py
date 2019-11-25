@@ -8,15 +8,22 @@ from keeper import db
 
 class SSHUtil:
   @classmethod
-  def _get_ssh_client(cls):
+  def _get_ssh_client(cls, custom_conf=None):
     cls.client = SSHClient()
     cls.client.set_missing_host_key_policy(AutoAddPolicy())
-    cls.client.connect(hostname=get_info('HOST'), username=get_info('USERNAME'), password=get_info('PASSWORD'))
-  
+    hostname=get_info('HOST')
+    username=get_info('USERNAME')
+    password=get_info('PASSWORD')
+    if custom_conf:
+      hostname=custom_conf["HOST"]
+      username=custom_conf["USERNAME"]
+      password=custom_conf["PASSWORD"]
+    cls.client.connect(hostname=hostname, username=username, password=password)
+      
   @classmethod
-  def exec_script(cls, app, filepath, *args):
+  def exec_script(cls, app, filepath, *args, custom_conf=None):
     try:
-      cls._get_ssh_client()
+      cls._get_ssh_client(custom_conf=custom_conf)
       app.logger.debug('{} {}'.format(filepath, ' '.join(args)))
       _, stdout, _ = cls.client.exec_command('{} {}'.format(filepath, ' '.join(args)))
       return stdout.read().decode("utf-8")

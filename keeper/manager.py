@@ -110,6 +110,9 @@ class KeeperManager:
     vm_info = self.get_vm_info()
     return self.__base_vagrant_operation("destroy", "-f", vm_info.id)
 
+  def get_custom_conf(self):
+    return get_info('CUSTOM_CONF')
+
   @staticmethod
   def get_gitlab_api_url():
     return parse.urljoin(get_info('GITLAB_URL'), get_info('GITLAB_API_PREFIX'))

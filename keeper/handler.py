@@ -53,7 +53,10 @@ def snapshot():
       manager.toggle_runner('false')
     snapshot_name = manager.get_vm_snapshot_name(vm_name)
     filepath = os.path.join(os.path.join(current_app.instance_path, '%s-restore-snapshot.sh' % target))
-    SSHUtil.exec_script(current_app, filepath, vm_runner['vm_id'], snapshot_name)
+    custom_conf = manager.get_custom_conf()
+    if custom_conf:
+      current_app.logger.debug("Got custom conf with host: %s, username: %s", custom_conf["HOST"], custom_conf["USERNAME"])
+    current_app.logger.debug(SSHUtil.exec_script(current_app, filepath, vm_runner['vm_id'], snapshot_name, custom_conf=custom_conf))
   except KeeperException as e:
     current_app.logger.error(e)
     return abort(e.message, "Failed to execute script file: %s" % '%s-restore-snapshot.sh' % target)
