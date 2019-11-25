@@ -5,7 +5,7 @@ from flask import (
 from keeper.db import get_vm
 from keeper.manager import KeeperManager, KeeperException
 from keeper.util import SubTaskUtil
-from keeper.model import VM
+from keeper.model import VM, Snapshot
 
 bp = Blueprint('vm', __name__, url_prefix="/api/v1")
 
@@ -17,6 +17,32 @@ def recycle_vm(current_app, vm_name, project_id, pipeline_id, status="N/A"):
   finally:
     KeeperManager.release_ip_runner_on_success(pipeline_id, status, current_app)
     KeeperManager.unregister_runner_by_name(vm_name, current_app)
+
+@bp.route('/vm/simple', methods=["POST"])
+def vm_simple():
+  vm_name = request.args.get("name", None)
+  if not vm_name:
+    return abort(400, "VM name is required.")
+  vm_conf = request.get_json()
+  if "keeper_url" not in vm_conf:
+    return abort(400, "Keeper URL is required.")
+  if "target" not in vm_conf:
+    return abort(400, "Target is required.")
+  if "vm_id" not in vm_conf:
+    return abort(400, "VM ID is required.")
+  if "snapshot_name" not in vm_conf:
+    return abort(400, "Snapshot name is required.")
+  try:
+    vm = VM(vm_conf["vm_id"], vm_name, vm_conf["target"], vm_conf["keeper_url"])
+    sn = Snapshot(vm_conf["vm_id"], vm_conf["snapshot_name"])
+    KeeperManager.add_vm_snapshot(vm, sn, current_app)
+    message = "Successful submitted simple VM: %s" %(vm_name,)
+    current_app.logger.debug(message)
+    return message
+  except KeeperException as e:
+    message = "Failed to submitted simple VM: %s" %(e.message,)
+    current_app.logger.error(message)
+    return abort(e.code, message)
 
 @bp.route('/vm', methods=["GET", "POST"])
 def vm():

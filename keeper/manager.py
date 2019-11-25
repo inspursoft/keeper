@@ -116,8 +116,8 @@ class KeeperManager:
 
   @staticmethod
   def add_vm_snapshot(vm, snapshot, app):
-    r = db.check_vm_snapshot(vm, snapshot, app)
-    if r['cnt'] == 0:
+    r = db.check_vm_snapshot(vm.vm_name, snapshot.snapshot_name, app)
+    if not r:
       db.insert_vm(vm, app)
       db.insert_snapshot(snapshot, app)
     else:
