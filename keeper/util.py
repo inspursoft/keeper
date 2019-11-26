@@ -5,6 +5,7 @@ import os
 from threading import Thread
 from keeper import get_info
 from keeper import db
+from os import path
 
 class SSHUtil:
   @classmethod
@@ -25,6 +26,8 @@ class SSHUtil:
     try:
       cls._get_ssh_client(custom_conf=custom_conf)
       app.logger.debug('{} {}'.format(filepath, ' '.join(args)))
+      if custom_conf and "SCRIPT_PATH" in custom_conf:
+        filepath = path.join(custom_conf["SCRIPT_PATH"], filepath)
       _, stdout, _ = cls.client.exec_command('{} {}'.format(filepath, ' '.join(args)))
       return stdout.read().decode("utf-8")
     except Exception as e:
