@@ -4,13 +4,15 @@ from requests.auth import HTTPBasicAuth
 from keeper.model import *
 from keeper import db
 from keeper import get_info
-from keeper.util import TemplateUtil, SSHUtil
+from keeper.util import TemplateUtil, SSHUtil, TaskCountUtil
 
 import re
 from urllib import parse
 import os
 from json.decoder import JSONDecodeError
 from datetime import datetime, timedelta
+import time
+
 
 class KeeperException(Exception):
   def __init__(self, code, message):
@@ -115,7 +117,32 @@ class KeeperManager:
     if "CUSTOM_CONF" in self.current.config["SETUP"]:
       conf = get_info('CUSTOM_CONF')
     return conf
-    
+
+  def recycle_vm(self, pipeline_id, status):
+    try:
+      self.force_delete_vm()
+      time.sleep(5)
+    except KeeperException as e:
+      self.current.logger.error(e.message)
+    finally:
+      KeeperManager.release_ip_runner_on_success(pipeline_id, status, self.current)
+      KeeperManager.unregister_runner_by_name(self.vm_name, self.current)
+
+  def resolve_pipeline_runner_recycle(self, pipeline_id, status, stages, builds):
+    if status in ["success", "canceled"]:
+      self.current.logger.debug("Pipeline runner will be removing as %s status", status)
+      self.recycle_vm(pipeline_id, status)
+    else:
+      TaskCountUtil.canceled = False 
+      existing = KeeperManager.get_ip_provision_by_pipeline(pipeline_id, self.current)
+      if existing and len(builds) >= len(stages):
+        for index, stage in enumerate(stages):
+          status = builds[index]["status"]
+          if status in ["failed"]:
+            TaskCountUtil.put(pipeline_id, 20, self.current)
+            self.current.logger.debug("Pipeline runner will not be recycled as it has %s status job(s).", status)
+            return 
+   
   @staticmethod
   def get_gitlab_api_url():
     return parse.urljoin(get_info('GITLAB_URL'), get_info('GITLAB_API_PREFIX'))
@@ -600,6 +627,14 @@ class KeeperManager:
       db.remove_ip_runner(ip_provision_id, app)
       app.logger.debug("Released IP: %s as %s.", ip_address, status)
       
+  @staticmethod
+  def get_runner_by_pipeline(pipeline_id, app):
+    app.logger.debug("Get runner by pipeline ID: %s", pipeline_id)
+    r = db.get_runner_by_pipeline(pipeline_id)
+    if not r or len(r) == 0:
+      raise KeeperException(404, "Pipeline %s for runner does not exist.", pipeline_id)
+    return Runner(r["runner_name"])
+
   @staticmethod
   def register_runner(username, project_name, config, app):
     project = KeeperManager.resolve_project(username, project_name, app)

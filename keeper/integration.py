@@ -9,7 +9,7 @@ from keeper.manager import *
 from keeper import get_info
 
 from keeper.model import *
-from keeper.vm import recycle_vm
+from keeper.util import TaskCountUtil
 
 import queue
 import time
@@ -222,6 +222,18 @@ def runner_probe():
     return abort(400, "Status is required.")
   while not q.empty():
     try:
+      report_id = TaskCountUtil.report()
+      if report_id:
+        current_app.logger.debug("Pipeline %d runner will be removing as reported by TaskCount.", report_id)
+        runner = KeeperManager.get_runner_by_pipeline(report_id, current_app)
+        KeeperManager(current_app, runner.runner_name).recycle_vm(report_id, status)
+        TaskCountUtil.message = None
+        TaskCountUtil.canceled = False
+        # return "Pipeline %d runner will be removing as reported by TaskCount." %(report_id)
+      if TaskCountUtil.canceled:
+        current_app.logger.debug("Queued pipeline task was canceled as reported.")
+        return "Queued pipeline task was canceled as reported."
+      TaskCountUtil.countdown(report_id)
       ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
       pipeline_task = q.get()
       pipeline_id = pipeline_task.id
@@ -272,9 +284,10 @@ def prepare_runner():
     resp = requests.get(probe_request_url)
     current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
   threading.Thread(target=callback).start()
-  if status in ["success", "canceled", "failed"]:
-    current_app.logger.debug("Runner mission is %s will be removing it...", status)
-    recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
+  #if status in ["success", "canceled", "failed"]:
+    # current_app.logger.debug("Runner mission is %s will be removing it ...", status)
+    #recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
+  KeeperManager(current_app, vm_name).resolve_pipeline_runner_recycle(pipeline_id, status, stages, builds)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
     current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
     return jsonify(message="VM would not be re-created as the pipeline is same with last one.")

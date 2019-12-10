@@ -6,6 +6,7 @@ from threading import Thread
 from keeper import get_info
 from keeper import db
 from os import path
+import time
 
 class SSHUtil:
   @classmethod
@@ -29,6 +30,7 @@ class SSHUtil:
       if custom_conf and "SCRIPT_PATH" in custom_conf:
         filepath = path.join(custom_conf["SCRIPT_PATH"], filepath)
       _, stdout, _ = cls.client.exec_command('{} {}'.format(filepath, ' '.join(args)))
+      time.sleep(2)
       return stdout.read().decode("utf-8")
     except Exception as e:
       app.logger.error("Failed to execute script: %s with error: %s", "{} {}".format(filepath, *args), e)
@@ -95,3 +97,45 @@ class SubTaskUtil:
   @classmethod
   def start(cls):
     Thread(target=SubTaskUtil.subtask).start()
+
+import time
+
+class TaskCountUtil:
+  counts = {}
+  app = {}
+  message = None
+  canceled = False
+
+  @classmethod
+  def put(cls, id, initial, current):
+    cls.app = current
+    cls.message = None
+    if id not in cls.counts:
+      cls.counts[id] = initial
+      cls.canceled = True
+      cls.app.logger.debug("Put %s into TaskCount.", id)
+      
+  @classmethod
+  def countdown(cls, id):
+    while len(cls.counts.keys()) > 0:
+      for id in list(cls.counts.keys()):
+        if cls.canceled:
+          cls.counts.pop(id)
+          cls.app.logger.debug("Canceled countdown task for pipeline %s", id)
+          return
+        cls.app.logger.debug("Countdown task %s with %d in TaskCount", id, cls.counts[id])
+        cls.counts[id] -= 1
+        if cls.counts[id] == 0:
+          cls.record(id)
+          cls.counts.pop(id)
+        time.sleep(1)
+      time.sleep(1)
+  
+  @classmethod
+  def record(cls, message):
+    cls.message = message
+    cls.app.logger.debug("Recorded task %s in TaskCount as it has reached.", cls.message)
+
+  @classmethod
+  def report(cls):
+    return cls.message

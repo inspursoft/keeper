@@ -9,15 +9,6 @@ from keeper.model import VM, Snapshot
 
 bp = Blueprint('vm', __name__, url_prefix="/api/v1")
 
-def recycle_vm(current_app, vm_name, project_id, pipeline_id, status="N/A"):
-  try:
-    KeeperManager(current_app, vm_name).force_delete_vm()
-  except KeeperException as e:
-    current_app.logger.error(e.message)
-  finally:
-    KeeperManager.release_ip_runner_on_success(pipeline_id, status, current_app)
-    KeeperManager.unregister_runner_by_name(vm_name, current_app)
-
 @bp.route('/vm/simple', methods=["POST"])
 def vm_simple():
   vm_name = request.args.get("name", None)
@@ -88,7 +79,7 @@ def vm():
         KeeperManager.unregister_inrelevant_runner(project_id, vm_name, current)
         manager = KeeperManager(current, vm_name)
         if manager.check_vm_exists():
-          recycle_vm(current, vm_name, project_id, pipeline_id)
+          manager.recycle_vm(project_id, pipeline_id)
         project = KeeperManager.resolve_project(username, project_name, current)
         runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
         manager.generate_vagrantfile(runner_token, vm_conf)
