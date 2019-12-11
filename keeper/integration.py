@@ -227,6 +227,7 @@ def runner_probe():
         current_app.logger.debug("Pipeline %d runner will be removing as reported by TaskCount.", report_id)
         runner = KeeperManager.get_runner_by_pipeline(report_id, current_app)
         KeeperManager(current_app, runner.runner_name).recycle_vm(report_id, status)
+        time.sleep(5)
         TaskCountUtil.message = None
         TaskCountUtil.canceled = False
         # return "Pipeline %d runner will be removing as reported by TaskCount." %(report_id)
@@ -244,7 +245,7 @@ def runner_probe():
         current_app.logger.error(e.message)
     except KeeperException as e:
       current_app.logger.debug("Waiting for release IP to retry pipelines ...")
-    time.sleep(4.0)
+    time.sleep(5)
   return "None of queued pipelines."
 
 @bp.route("/runners", methods=["POST"])
@@ -278,15 +279,6 @@ def prepare_runner():
     except KeeperException as e:
       current_app.logger.error(e)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
-  current = current_app._get_current_object()
-  probe_request_url = urljoin("http://localhost:5000", url_for(".runner_probe", project_id=project_id, vm_name=vm_name, status=status))
-  def callback():
-    resp = requests.get(probe_request_url)
-    current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
-  threading.Thread(target=callback).start()
-  #if status in ["success", "canceled", "failed"]:
-    # current_app.logger.debug("Runner mission is %s will be removing it ...", status)
-    #recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   KeeperManager(current_app, vm_name).resolve_pipeline_runner_recycle(pipeline_id, status, stages, builds)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
     current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
@@ -306,6 +298,13 @@ def prepare_runner():
       current_app.logger.debug("Pipeline: %d has queued for executing with priority: %d", pipeline_id, project.priority)
       q.put(PipelineTask(pipeline_id, project.priority))
     return abort(e.code, e.message)
+  finally:
+    current = current_app._get_current_object()
+    probe_request_url = urljoin("http://localhost:5000", url_for(".runner_probe", project_id=project_id, vm_name=vm_name, status=status))
+    def callback():
+      resp = requests.get(probe_request_url)
+      current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
+    threading.Thread(target=callback).start()
   current_app.logger.debug("Runner with pipeline: %d status is %s, with IP provision ID: %d, IP: %s", pipeline_id, status, ip_provision.id, ip_provision.ip_address)
   try:
     vm_conf = {

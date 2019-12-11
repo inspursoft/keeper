@@ -121,7 +121,7 @@ class TaskCountUtil:
       for id in list(cls.counts.keys()):
         if cls.canceled:
           cls.counts.pop(id)
-          cls.app.logger.debug("Canceled countdown task for pipeline %s", id)
+          cls.app.logger.debug("Canceling countdown task for pipeline %s", id)
           return
         cls.app.logger.debug("Countdown task %s with %d in TaskCount", id, cls.counts[id])
         cls.counts[id] -= 1
@@ -134,7 +134,7 @@ class TaskCountUtil:
   @classmethod
   def record(cls, message):
     cls.message = message
-    cls.app.logger.debug("Recorded task %s in TaskCount as it has reached.", cls.message)
+    cls.app.logger.debug("Reported task %s in TaskCount as it has reached.", cls.message)
 
   @classmethod
   def report(cls):

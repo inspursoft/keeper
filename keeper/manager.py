@@ -121,7 +121,6 @@ class KeeperManager:
   def recycle_vm(self, pipeline_id, status):
     try:
       self.force_delete_vm()
-      time.sleep(5)
     except KeeperException as e:
       self.current.logger.error(e.message)
     finally:
