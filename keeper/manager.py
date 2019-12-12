@@ -128,7 +128,7 @@ class KeeperManager:
       KeeperManager.unregister_runner_by_name(self.vm_name, self.current)
 
   def resolve_pipeline_runner_recycle(self, pipeline_id, status, stages, builds):
-    if status in ["success", "canceled"]:
+    if status in ["success"]:
       self.current.logger.debug("Pipeline runner will be removing as %s status", status)
       self.recycle_vm(pipeline_id, status)
     else:
@@ -137,7 +137,7 @@ class KeeperManager:
       if existing and len(builds) >= len(stages):
         for index, stage in enumerate(stages):
           status = builds[index]["status"]
-          if status in ["failed"]:
+          if status in ["failed", "canceled"]:
             TaskCountUtil.put(pipeline_id, 20, self.current)
             self.current.logger.debug("Pipeline runner will not be recycled as it has %s status job(s).", status)
             return 
@@ -631,7 +631,7 @@ class KeeperManager:
     app.logger.debug("Get runner by pipeline ID: %s", pipeline_id)
     r = db.get_runner_by_pipeline(pipeline_id)
     if not r or len(r) == 0:
-      raise KeeperException(404, "Pipeline %s for runner does not exist.", pipeline_id)
+      raise KeeperException(404, "Pipeline %s for runner does not exist." %(pipeline_id,))
     return Runner(r["runner_name"])
 
   @staticmethod
