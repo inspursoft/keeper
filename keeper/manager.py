@@ -137,7 +137,7 @@ class KeeperManager:
       if existing and len(builds) >= len(stages):
         for index, stage in enumerate(stages):
           status = builds[index]["status"]
-          if status in ["failed", "canceled"]:
+          if status in ["failed"]:
             TaskCountUtil.put(pipeline_id, 20, self.current)
             self.current.logger.debug("Pipeline runner will not be recycled as it has %s status job(s).", status)
             return 

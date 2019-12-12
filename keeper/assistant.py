@@ -147,8 +147,5 @@ def release(action):
     current_app.logger.debug(commit_info)
     message = "Successful %s release." % (action)
   except KeeperException as ke:
-    if ke.code == 400:
-      return abort(ke.code, ke.message)
-    else:
-      message = "Failed to release: %s" % (e,)
+    message = "Failed to release: %s" % (ke,)
   return message
