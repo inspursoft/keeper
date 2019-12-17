@@ -222,19 +222,12 @@ def runner_probe():
     return abort(400, "Status is required.")
   while not q.empty():
     try:
-      report_id = TaskCountUtil.report()
+      report_id = TaskCountUtil.report(current_app)
       if report_id:
         current_app.logger.debug("Pipeline %d runner will be removing as reported by TaskCount.", report_id)
         runner = KeeperManager.get_runner_by_pipeline(report_id, current_app)
         KeeperManager(current_app, runner.runner_name).recycle_vm(report_id, status)
-        time.sleep(5)
-        TaskCountUtil.message = None
-        TaskCountUtil.canceled = False
-        # return "Pipeline %d runner will be removing as reported by TaskCount." %(report_id)
-      if TaskCountUtil.canceled:
-        current_app.logger.debug("Queued pipeline task was canceled as reported.")
-        return "Queued pipeline task was canceled as reported."
-      TaskCountUtil.countdown(report_id)
+      TaskCountUtil.countdown(report_id, current_app)
       ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
       pipeline_task = q.get()
       pipeline_id = pipeline_task.id

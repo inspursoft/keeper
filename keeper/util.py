@@ -98,44 +98,33 @@ class SubTaskUtil:
   def start(cls):
     Thread(target=SubTaskUtil.subtask).start()
 
-import time
-
 class TaskCountUtil:
-  counts = {}
-  app = {}
-  message = None
-  canceled = False
+  tasks = {}
 
   @classmethod
-  def put(cls, id, initial, current):
+  def put(cls, id, init, current):
     cls.app = current
-    cls.message = None
-    if id not in cls.counts:
-      cls.counts[id] = initial
-      cls.canceled = True
-      cls.app.logger.debug("Put %s into TaskCount.", id)
+    if id not in cls.tasks:
+      cls.tasks[id] = init
+      current.logger.debug("Put %s into TaskCount.", id)
       
   @classmethod
-  def countdown(cls, id):
-    while len(cls.counts.keys()) > 0:
-      for id in list(cls.counts.keys()):
-        if cls.canceled:
-          cls.counts.pop(id)
-          cls.app.logger.debug("Canceling countdown task for pipeline %s", id)
-          return
-        cls.app.logger.debug("Countdown task %s with %d in TaskCount", id, cls.counts[id])
-        cls.counts[id] -= 1
-        if cls.counts[id] == 0:
-          cls.record(id)
-          cls.counts.pop(id)
-        time.sleep(1)
+  def countdown(cls, id, current):
+    if len(cls.tasks.keys()) == 0:
+      current.logger.debug("None of tasks currently.")
+      return
+    if id not in cls.tasks:
+      current.logger.debug("Task %d does not in TaskCount.", id)
+      return
+    while cls.tasks[id] > 0:
+      cls.tasks[id] -= 1
+      current.logger.debug("Countdown task %s with count %d in TaskCount", id, cls.tasks[id])
       time.sleep(1)
-  
-  @classmethod
-  def record(cls, message):
-    cls.message = message
-    cls.app.logger.debug("Reported task %s in TaskCount as it has reached.", cls.message)
+    cls.task.pop(id)
 
   @classmethod
-  def report(cls):
-    return cls.message
+  def report(cls, current):
+    for key in cls.tasks.keys():
+      id = cls.tasks[key]
+      current.logger.debug("Reporting task %s in TaskCount", id)
+      return id

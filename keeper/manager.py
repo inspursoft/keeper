@@ -128,20 +128,19 @@ class KeeperManager:
       KeeperManager.unregister_runner_by_name(self.vm_name, self.current)
 
   def resolve_pipeline_runner_recycle(self, pipeline_id, status, stages, builds):
-    if status in ["success"]:
+    if status in ["success", "canceled"]:
       self.current.logger.debug("Pipeline runner will be removing as %s status", status)
       self.recycle_vm(pipeline_id, status)
     else:
-      TaskCountUtil.canceled = False 
       existing = KeeperManager.get_ip_provision_by_pipeline(pipeline_id, self.current)
       if existing and len(builds) >= len(stages):
         for index, stage in enumerate(stages):
           status = builds[index]["status"]
           if status in ["failed"]:
-            TaskCountUtil.put(pipeline_id, 20, self.current)
+            TaskCountUtil.put(pipeline_id, 5, self.current)
             self.current.logger.debug("Pipeline runner will not be recycled as it has %s status job(s).", status)
-            return 
-   
+            return
+
   @staticmethod
   def get_gitlab_api_url():
     return parse.urljoin(get_info('GITLAB_URL'), get_info('GITLAB_API_PREFIX'))
