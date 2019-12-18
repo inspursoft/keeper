@@ -421,6 +421,7 @@ class KeeperManager:
     u = db.get_user_info(username)
     if not u:
       raise KeeperException(404, "No username found with provided name: %s" % username)
+    app.logger.debug("Obtained user: %s for retrieving project." % u)
     p = db.get_project_by_user_id(project_name, u["user_id"])
     if not p:
       raise KeeperException(404, "No project found with provided name: %s, user ID: %d"% (project_name, u["user_id"]))
