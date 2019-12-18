@@ -89,7 +89,7 @@ def add_project():
     return abort(400, "Project name is required.")
   project_id = request.args.get("project_id", None)
   try:
-    KeeperManager.add_project(username, project_name, project_id, current_app)
+    KeeperManager.add_project(username, project_name, current_app, project_id)
   except KeeperException as e:
     return abort(e.code, e.message)
   return jsonify(message="Successful added user with project")
