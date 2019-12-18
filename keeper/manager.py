@@ -487,12 +487,17 @@ class KeeperManager:
     return project
 
   @staticmethod
-  def add_project(username, project_name, app):
+  def add_project(username, project_name, project_id=None, app):
     r = db.check_user_project(username, project_name, app)
     if r['cnt'] > 0:
       app.logger.error("User: %s with project: %s already exists." % (username, project_name))
       raise KeeperException(409, "User: %s with project: %s already exists." % (username, project_name))
-    project = KeeperManager.resolve_user_project(username, project_name, app)
+    project = Project(project_name)
+    if not project_id:
+      project = KeeperManager.resolve_user_project(username, project_name, app)
+    else:
+      app.logger.debug("Use specified project ID: %d to the project: %s", project_id, project_name)
+      project.project_id = project_id
     user = KeeperManager.resolve_user(username, app)   
     app.logger.debug("Obtained user: %s" % user)
     db.insert_project(project, app)
