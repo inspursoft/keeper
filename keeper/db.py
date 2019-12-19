@@ -164,11 +164,11 @@ def get_note_template(name):
 
 def get_available_ip():
   return get_db().execute(
-    '''select min(ip.id) id, min(ip.ip_address) ip_address
+    '''select ip.id, ip.ip_address
           from ip_provision ip 
          left join ip_runner ir on ir.ip_provision_id = ip.id
          where  ip.is_allocated = 0'''
-  ).fetchone()
+  ).fetchall()
 
 def get_reserved_runner_by_project(project_id):
   return get_db().execute(
