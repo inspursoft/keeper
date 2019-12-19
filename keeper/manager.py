@@ -11,6 +11,7 @@ from urllib import parse
 import os
 from json.decoder import JSONDecodeError
 from datetime import datetime, timedelta
+import random
 
 class KeeperException(Exception):
   def __init__(self, code, message):
@@ -574,10 +575,12 @@ class KeeperManager:
   def get_ip_provision(project_id, app):
     r = db.get_reserved_runner_by_project(project_id)
     if not r:
-      r = db.get_available_ip()
-      if not r["id"]:
+      ips = db.get_available_ip()
+      if len(ips) == 0:
         raise KeeperException(404, "No IP provision found currently.")
-      return IPProvision(r["id"], r["ip_address"])
+      ip = ips[random.randint(1, len(ips)) - 1]
+      app.logger.debug("Allocated IP: %s, with ID: %s", ip["ip_address"], ip["id"])
+      return IPProvision(ip["id"], ip["ip_address"])
     raise KeeperException(409, "IP runner already reserved.")
 
   @staticmethod
