@@ -418,17 +418,15 @@ class KeeperManager:
         project.project_id = p['id']
         app.logger.debug("Obtained project: %s in project runner registration." % project) 
         return project
-    app.logger.debug("Retrieve project ID from DB storing.")
+    app.logger.debug("Retrieve project ID from DB store.")
     u = db.get_user_info(username)
     if not u:
       raise KeeperException(404, "No username found with provided name: %s" % username)
-    app.logger.debug("Obtained user: %s for retrieving project." % u)
     p = db.get_project_by_user_id(project_name, u["user_id"])
     if not p:
       raise KeeperException(404, "No project found with provided name: %s, user ID: %d"% (project_name, u["user_id"]))
     project.project_id = p["project_id"]
-    if "project_id" not in project:
-      raise KeeperException(404, "No project id found with provided project name: %s" % project_name)
+    return project
 
   @staticmethod
   def register_project_runner(username, project_name, runner_name, vm, snapshot=None, app=None):
