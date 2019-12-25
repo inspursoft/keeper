@@ -249,6 +249,7 @@ def prepare_runner():
   project = data["project"]
   abbr_name = project["name"]
   project_name = project["path_with_namespace"]
+  namespace = project["namespace"]
   project = KeeperManager.resolve_project(username, project_name, current_app)
   if not project:
     return abort(400, "Project name: %s does not exist." % (project_name,))
@@ -259,7 +260,7 @@ def prepare_runner():
   stages = object_attr["stages"]
   builds = data["builds"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
-  if "pre-merge-requests" in stages:
+  if "pre-merge-requests" in stages or namespace != username:
     current_app.logger.debug("Pipeline started with pre-merge requests...")
     try:
       vm_base_name = "%s-runner-%s" % (abbr_name, base_repo_name)
