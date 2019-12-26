@@ -243,6 +243,11 @@ def prepare_runner():
   username = request.args.get("username", None)
   if not username:
     return abort(400, "Username is required.")
+  simplicity = request.args.get("simplicity", "0")
+  unsupportpremerge = False
+  if simplicity == "1":
+    unsupportpremerge = True
+    current_app.logger.debug("Runner is registering as simplicity to handle unsupport pre-mergeable mode.")
 
   data = request.get_json()
   current_app.logger.debug(data)
@@ -260,7 +265,7 @@ def prepare_runner():
   stages = object_attr["stages"]
   builds = data["builds"]
   vm_base_name = "%s-runner-%s" % (abbr_name, username)
-  if "pre-merge-requests" in stages or namespace != username:
+  if "pre-merge-requests" in stages or unsupportpremerge:
     current_app.logger.debug("Pipeline started with pre-merge requests...")
     try:
       vm_base_name = "%s-runner-%s" % (abbr_name, base_repo_name)
