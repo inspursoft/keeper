@@ -243,12 +243,7 @@ def prepare_runner():
   username = request.args.get("username", None)
   if not username:
     return abort(400, "Username is required.")
-  simplicity = request.args.get("simplicity", "0")
-  unsupportpremerge = False
-  if simplicity == "1":
-    unsupportpremerge = True
-    current_app.logger.debug("Runner is registering as simplicity to handle unsupport pre-mergeable mode.")
-
+  
   data = request.get_json()
   current_app.logger.debug(data)
   project = data["project"]
@@ -262,15 +257,8 @@ def prepare_runner():
   object_attr = data["object_attributes"]
   pipeline_id = object_attr["id"]
   status = object_attr["status"]
-  stages = object_attr["stages"]
   builds = data["builds"]
-  vm_base_name = "%s-runner-%s" % (abbr_name, username)
-  if "pre-merge-requests" in stages or unsupportpremerge:
-    current_app.logger.debug("Pipeline started with pre-merge requests...")
-    try:
-      vm_base_name = "%s-runner-%s" % (abbr_name, base_repo_name)
-    except KeeperException as e:
-      current_app.logger.error(e)
+  vm_base_name = "%s-runner-%s" % (abbr_name, base_repo_name)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
   current = current_app._get_current_object()
   probe_request_url = urljoin("http://localhost:5000", url_for(".runner_probe", project_id=project_id, vm_name=vm_name, status=status))
