@@ -89,7 +89,6 @@ def vm():
         manager = KeeperManager(current, vm_name)
         if manager.check_vm_exists():
           recycle_vm(current, vm_name, project_id, pipeline_id)
-        project = KeeperManager.resolve_project(username, project_name, current)
         runner_token = KeeperManager.resolve_runner_token(username, project_name, current)
         manager.generate_vagrantfile(runner_token, vm_conf)
         manager.copy_vm_files()

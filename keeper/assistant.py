@@ -150,5 +150,5 @@ def release(action):
     if ke.code == 400:
       return abort(ke.code, ke.message)
     else:
-      message = "Failed to release: %s" % (e,)
+      message = "Failed to release: %s" % (ke,)
   return message

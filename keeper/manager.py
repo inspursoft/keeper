@@ -83,7 +83,7 @@ class KeeperManager:
   
   def __base_vagrant_operation(self, *operation):
     vm_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
-    return SSHUtil.exec_script(self.current, "cd %s && vagrant" % vm_path, *operation)
+    return SSHUtil.exec_script(self.current, "cd %s && PATH=/usr/local/bin:$PATH vagrant" % vm_path, *operation)
 
   def create_vm(self):
     return self.__base_vagrant_operation("up")
@@ -100,10 +100,10 @@ class KeeperManager:
   
   def check_vm_exists(self):
     try:
-      info = self.get_vm_info()
+      self.get_vm_info()
       self.current.logger.debug("VM: %s already exists.", self.vm_name)
       return True
-    except KeeperException as e:
+    except KeeperException:
       self.current.logger.debug("VM: %s does not exist.", self.vm_name)
       return False
 
@@ -214,7 +214,7 @@ class KeeperManager:
       raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
     try:
       return resp.json()
-    except JSONDecodeError as e:
+    except JSONDecodeError:
       pass
 
   @staticmethod
@@ -430,7 +430,6 @@ class KeeperManager:
 
   @staticmethod
   def register_project_runner(username, project_name, runner_name, vm, snapshot=None, app=None):
-    token = KeeperManager.resolve_token(username, app)
     project = KeeperManager.resolve_project(username, project_name, app)
     runner = KeeperManager.resolve_runner(project.project_id, runner_name, app)
     app.logger.debug("Obtained runner: %s in project runner registration." % runner)    
@@ -514,14 +513,13 @@ class KeeperManager:
     
   @staticmethod
   def resolve_runner_token(username, project_name, app):
-    project = KeeperManager.resolve_user_project(username, project_name, app)
     r = db.get_runner_token(username, project_name)
     if not r:
       raise KeeperException(404, 'No project runner token found with project: %s and username: %s' % (project_name, username))
     return r['runner_token']
 
   @staticmethod
-  def update_runner_token(username, project_id, project_name, runner_token, app):
+  def update_runner_token(username, project_name, runner_token, app):
     project = KeeperManager.resolve_user_project(username, project_name, app)
     db.update_runner_token(runner_token, project.project_id, app)
 
@@ -537,7 +535,6 @@ class KeeperManager:
       r = db.check_issue_exists(user.user_id, issue["hash"])
       if r["cnt"] > 0:
         raise KeeperException(409, "User ID: %d with issue hash: %s already exists." % (user.user_id, issue["hash"]))
-        continue
       
       title = issue["message"]
       component = issue["component"]
@@ -566,7 +563,7 @@ class KeeperManager:
   @staticmethod
   def render_note_with_template(content, **kwargs):
     p = re.compile(r"\[(?P<tag>[^\]]+)\]")
-    content = p.sub("%s/\g<tag>" % get_info("NGINX_PROXY"), content)
+    content = p.sub(r"%s/\g<tag>" % get_info("NGINX_PROXY"), content)
     return TemplateUtil.render_simple(content, **kwargs)
 
   @staticmethod

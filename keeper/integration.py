@@ -5,9 +5,9 @@ from flask import (
 import os
 from urllib.parse import urljoin
 
-from keeper.manager import *
 from keeper import get_info
 
+from keeper.manager import *
 from keeper.model import *
 from keeper.vm import recycle_vm
 
@@ -17,75 +17,6 @@ import threading
 import requests
 
 bp = Blueprint("integration", __name__ ,url_prefix="/api/v1")
-
-'''
-{"object_kind":"merge_request","project":{"name":"myrepo0624"},"object_attributes":{"source_branch":"master","source_project_id":28,"state":"opened","last_commit":{"id":"40ed5e6e72feb12f8a0a87374b2822adb2271214"},"work_in_progress":false}}
-'''
-@bp.route('/hook', methods=["POST"])
-def hook():
-  username = request.args.get('username', None)
-  if username is None:
-    return abort(400, "Username is required.")
-  data = request.get_json()
-  if data is None:
-    current_app.logger.error("None of request body.")
-    return abort(400, "None of request body.")
-  project_id = data["project"]["id"]
-  object_attr = data["object_attributes"]
-  source_project_id = object_attr['source_project_id']
-  ref = object_attr["source_branch"]
-  commit_id = object_attr["last_commit"]["id"]
-  try:
-    builds = KeeperManager.get_repo_commit_status(project_id, commit_id, current_app)
-    for build in builds:
-      if build['status'] == 'skipped':
-        abort(422, "INFO: %s build skipped (reason: build %d is in \"%s\" status)" % (commit_id, build['id'], build['status']))
-        return
-    resp = KeeperManager.trigger_pipeline(source_project_id, ref, current_app)
-    return jsonify(resp)
-  except KeeperException as e:
-    current_app.logger.error(e)
-    return abort(e.code, e.message)
-
-default_open_branch_prefix = 'fix:'
-default_ref = 'dev'
-
-@bp.route('/issue', methods=["POST"])
-def issue():
-  username = request.args.get('username', None)
-  if username is None:
-    return abort(400, "Username is required.")
-  ref = request.args.get('ref', default_ref)
-  open_branch_prefix = request.args.get('open_branch_prefix', default_open_branch_prefix)
-  current_app.logger.info("Current ref branch is: %s", ref)
-  current_app.logger.info("Current openning branch prefix is: %s", open_branch_prefix)
-  data = request.get_json()
-  if data is None:
-    current_app.logger.error("None of request body.")
-    return abort(400, "None of request body.")
-  project = data['project']
-  project_id = project['id']
-  object_attr = data["object_attributes"]
-  title = object_attr["title"]
-  issue_iid = object_attr["iid"]
-
-  s_title = title.lower()
-  if not s_title.startswith(open_branch_prefix):
-    current_app.logger.debug("No need to create branch with openning issue.")
-    return jsonify(message="No need to create branch with openning issue.")
-
-  try:
-    branch_name = KeeperManager.resolve_branch_name(s_title[len(open_branch_prefix):], current_app)
-    KeeperManager.create_branch(project_id, branch_name, ref, current_app)
-    KeeperManager.comment_on_issue(username, project_id, issue_iid, "Branch: %s has been created." % (branch_name,), current_app)
-    return jsonify(message="Successful created branch with issue.")
-  except KeeperException as e:
-    current_app.logger.error(e)
-    return abort(e.code, e.message)
-
-default_description = 'Assigned issue: %s to %s'
-default_label = 'quality'
-default_open_issue_prefix = "bug:"
 
 @bp.route("/issues/assign", methods=["POST"])
 def issue_assign():
@@ -102,16 +33,11 @@ def issue_assign():
     return abort(400, "Issue title is required.")
   if "assignee" not in data:
     return abort(400, "Issue assignee is required.")
-
-  s_title = data['title'].lower()
-  if not s_title.startswith(default_open_issue_prefix):
-    current_app.logger.debug("No need to create issue to assignee as title is: %s", data['title'])
-    return jsonify(message="No need to create issue to assignee as title is: %s" % data['title'])
-  
   if "description" not in data:
-    description = default_description % (data['title'], username)    
+    data["description"] = "As title."
   if "label" not in data:
-    label = default_label
+    data["label"] = "issue"
+
   try:
     project = KeeperManager.resolve_project(username, project_name, current_app)
     KeeperManager.post_issue_to_assignee(project.project_id, data['title'], data['description'], data['label'], data['assignee'], current_app)
@@ -182,19 +108,17 @@ def issue_open_peer():
   try:
     assignee_id = object_attr["assignee_id"]
     milestone_id = object_attr["milestone_id"]
-    if assignee_id is None or milestone_id is None:
-      assignee = User.new()
-      if assignee_id is None:
-        assignee = KeeperManager.resolve_user(default_assignee, current_app)
-        assignee_id = assignee.user_id
-      if milestone_id is None:
-        milestones = KeeperManager.get_all_milestones(project_id, {"state": "active"}, current_app) 
-        if len(milestones) == 0:
-          current_app.logger.error("No active milestones found with project ID: %d" % (project_id))
-          return abort(404, "No active milestones found with project ID: %d" % (project_id))
+    assignee = User.new()
+    if not assignee_id:
+      assignee = KeeperManager.resolve_user(default_assignee, current_app)
+      assignee_id = assignee.user_id
+    if not milestone_id:
+      milestones = KeeperManager.get_all_milestones(project_id, {"state": "active"}, current_app) 
+      if len(milestones) == 0:
+        current_app.logger.error("No active milestones found with project ID: %d" % (project_id))
+      else:
         milestone_id = milestones[-1]["id"]
-      KeeperManager.update_issue(project_id, issue_iid, {"assignee_ids": [assignee.user_id], "milestone_id": milestone_id}, current_app)
-    
+        KeeperManager.update_issue(project_id, issue_iid, {"assignee_ids": [assignee.user_id], "milestone_id": milestone_id}, current_app)
     try:
       due_date = KeeperManager.resolve_due_date(created_at, labels, current_app)
       KeeperManager.update_issue(project_id, issue_iid, {"due_date": due_date}, current_app)
@@ -222,7 +146,6 @@ def runner_probe():
     return abort(400, "Status is required.")
   while not q.empty():
     try:
-      ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
       pipeline_task = q.get()
       pipeline_id = pipeline_task.id
       current_app.logger.debug("Got pipeline ID: %d from queue with priority: %d", pipeline_id, pipeline_task.priority)
@@ -232,7 +155,7 @@ def runner_probe():
         current_app.logger.error(e.message)
     except KeeperException as e:
       current_app.logger.debug("Waiting for release IP to retry pipelines ...")
-    time.sleep(4.0)
+    time.sleep(5)
   return "None of queued pipelines."
 
 @bp.route("/runners", methods=["POST"])
@@ -249,7 +172,6 @@ def prepare_runner():
   project = data["project"]
   abbr_name = project["name"]
   project_name = project["path_with_namespace"]
-  namespace = project["namespace"]
   project = KeeperManager.resolve_project(username, project_name, current_app)
   if not project:
     return abort(400, "Project name: %s does not exist." % (project_name,))
@@ -257,7 +179,6 @@ def prepare_runner():
   object_attr = data["object_attributes"]
   pipeline_id = object_attr["id"]
   status = object_attr["status"]
-  builds = data["builds"]
   vm_base_name = "%s-runner-%s" % (abbr_name, base_repo_name)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
   current = current_app._get_current_object()
