@@ -665,3 +665,18 @@ class KeeperManager:
       raise KeeperException(400, "Project info is required.")
     project.priority = r['priority']
     return project
+
+  @staticmethod
+  def trigger_legacy_pipeline(project_id, token, ref, params, app):
+    app.logger.debug("Trigger pipeline with project ID: %s, token: %s and ref: %s", project_id, token, ref)
+    request_url = "%s/projects/%d/trigger/pipeline" % (KeeperManager.get_gitlab_api_url(), project_id)
+    default = {"token": token, "ref": ref}
+    req_params = {}
+    for key, value in params.items():
+      req_params["variables[%s]" % (key,)] = value
+    app.logger.debug("Trigger legacy pipeline with requested params: %s", req_params)
+    merged = {**default, **req_params}
+    resp = requests.post(request_url, data=merged)
+    if resp.status_code >= 400:
+      raise KeeperException(resp.status_code, resp.text)
+    app.logger.debug("Requested with URL: %s, responed: %s with status code: %s", request_url, resp.text, resp.status_code)

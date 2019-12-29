@@ -283,6 +283,40 @@ def relate_issue_to_merge_request():
     current_app.logger.error("Failed to relate issue to merge request: %s", e)
     return abort(e.code, e.message)
 
+@bp.route("/merge-request/pre-merge", methods=["POST"])
+def legacy_pre_merge():
+  trigger_token = request.args.get("token", None)
+  if not trigger_token:
+    return abort(400, "Trigger token is required.")
+  data = request.get_json()
+  current_app.logger.debug(data)
+  object_attr = data["object_attributes"]
+  action = object_attr["action"]
+  if action not in ["open", "reopen", "update"]:
+    current_app.logger.debug("Bypass to trigger pre-merge request as its action was %s.", action)
+    return "Bypass to trigger pre-merge request as its action was %s." % (action,)
+  target = object_attr["target"]
+  target_url = target["git_http_url"]
+  target_project_id = object_attr["target_project_id"]
+  target_branch = object_attr["target_branch"]
+  user = data["user"]
+  username = user["username"]
+  email = "%s@inspur.com" % (username,)
+  try:
+    db_user = KeeperManager.resolve_user(username, current_app)
+    params = {
+      "CI_MERGE_REQUEST_PROJECT_URL": target_url,
+      "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": target_branch,
+      "CI_TOKEN": db_user.token,
+      "GITLAB_USER_NAME": username,
+      "GITLAB_USER_EMAIL": email
+    }
+    KeeperManager.trigger_legacy_pipeline(target_project_id, trigger_token, target_branch, params, current_app)
+    return "Successful triggered pre-merge with pipeline."
+  except KeeperException as e:
+    current_app.logger.debug("Failed to request pre-merge: %s", e)
+    return abort(e.code, e.message)
+
 @bp.route("/tag/release", methods=["POST"])
 def tag_release():
   release_repo = request.args.get("release_repo", None)
