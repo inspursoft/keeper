@@ -668,6 +668,9 @@ class KeeperManager:
 
   @staticmethod
   def trigger_legacy_pipeline(project_id, token, ref, params, app):
+    r = db.get_reserved_runner_by_project(project_id)
+    if r:
+      raise KeeperException(409, "Project ID: %s for pipeline ID: %s was already reserved." %(r["project_id"], r["pipeline_id"]))
     app.logger.debug("Trigger pipeline with project ID: %s, token: %s and ref: %s", project_id, token, ref)
     request_url = "%s/projects/%d/trigger/pipeline" % (KeeperManager.get_gitlab_api_url(), project_id)
     default = {"token": token, "ref": ref}
