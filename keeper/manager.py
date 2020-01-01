@@ -755,7 +755,8 @@ class KeeperManager:
           KeeperManager.update_config_variable(target_project_id, current_key, current_value, app)
           del current_variables[current_key]
           last_variables.pop(index)
+          break
     for config in last_variables:
-        KeeperManager.delete_config_variable(target_project_id, config["key"], app)
+      KeeperManager.delete_config_variable(target_project_id, config["key"], app)
     for key, value in current_variables.items():
       KeeperManager.add_config_variable(target_project_id, key, value, app)
