@@ -189,7 +189,7 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
 
   @staticmethod
-  def request_gitlab_api(principle, request_url, app, method='POST', by_principle='project_id', params={}):
+  def request_gitlab_api(principle, request_url, app, method='POST', by_principle='project_id', params={}, resp_raw=False):
     r = None
     if by_principle == 'username':
       r = db.get_user_info(principle)
@@ -213,6 +213,8 @@ class KeeperManager:
       app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
       raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
     try:
+      if resp_raw:
+        return resp.text
       return resp.json()
     except JSONDecodeError:
       pass
@@ -683,3 +685,77 @@ class KeeperManager:
     if resp.status_code >= 400:
       raise KeeperException(resp.status_code, resp.text)
     app.logger.debug("Requested with URL: %s, responed: %s with status code: %s", request_url, resp.text, resp.status_code)
+
+  @staticmethod
+  def get_config_variables(project_id, app):
+    app.logger.debug("Get config variables with project ID: %s", project_id)
+    request_url = "%s/projects/%d/variables" % (KeeperManager.get_gitlab_api_url(), project_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method="GET")
+
+  @staticmethod
+  def add_config_variable(project_id, key, value, app):
+    app.logger.debug("Add config variable - key: %s, value: %s with project ID: %s", key, value, project_id)
+    request_url = "%s/projects/%d/variables" % (KeeperManager.get_gitlab_api_url(), project_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, params={"key": key, "value": value})
+
+  @staticmethod
+  def update_config_variable(project_id, key, value, app):
+    app.logger.debug("Update config variable - key: %s, value: %s with project ID: %s", key, value, project_id)
+    request_url = "%s/projects/%d/variables/%s" % (KeeperManager.get_gitlab_api_url(), project_id, key)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, params={"value": value}, method="PUT")
+
+  @staticmethod
+  def get_repository_raw_file(project_id, file_path, branch, app):
+    app.logger.debug("Get file %s from repository with project ID: %s", file_path, project_id)
+    request_url = "%s/projects/%d/repository/files/%s/raw?ref=%s" % (KeeperManager.get_gitlab_api_url(), project_id, file_path, branch)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method="GET", resp_raw=True)
+
+  @staticmethod
+  def delete_config_variable(project_id, key, app):
+    app.logger.debug("Delete config variable - key: %s with project ID: %s", key, project_id)
+    request_url = "%s/projects/%d/variables/%s" % (KeeperManager.get_gitlab_api_url(), project_id, key)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method="DELETE")
+
+  @staticmethod
+  def add_or_update_repository_file(project_id, action, file_path, content, branch, user, app):
+    method="POST"
+    if action == "update":
+      method="PUT"
+    app.logger.debug("%s file %s to the repository with project ID: %s", action.capitalize(),file_path, project_id)
+    request_url = "%s/projects/%d/repository/files/%s" % (KeeperManager.get_gitlab_api_url(), project_id, file_path)
+    params = {
+      "branch": branch,
+      "author_name": user.username,
+      "author_email": "%s@inspur.com" % (user.username,),
+      "content": content,
+      "commit_message": "Update file: %s" % (file_path,)
+    }
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method=method, params=params)
+
+  @staticmethod
+  def resolve_config_variables(config_project_id, target_project_id, file_path, branch, app):
+    last_variables = KeeperManager.get_config_variables(target_project_id, app)
+    content = KeeperManager.get_repository_raw_file(config_project_id, file_path, branch, app)
+    app.logger.debug("File path: %s", file_path)
+    app.logger.debug("Content: %s", content)
+    current_variables = {}
+    for line in content.splitlines():
+      if not line.find("=") or line.startswith("#"):
+        app.logger.debug("Bypass for none of equal sign or commented in line: %s", line)
+        continue
+      parts = line.split("=")
+      if len(parts) < 2:
+        continue
+      current_variables[parts[0].strip()] = parts[1].strip()
+    app.logger.debug("Current config variables: %s", current_variables)
+    for current_key in list(current_variables.keys()):
+      current_value = current_variables[current_key]
+      for index, last_config in enumerate(last_variables):
+        if last_config["key"] == current_key:
+          KeeperManager.update_config_variable(target_project_id, current_key, current_value, app)
+          del current_variables[current_key]
+          last_variables.pop(index)
+    for config in last_variables:
+        KeeperManager.delete_config_variable(target_project_id, config["key"], app)
+    for key, value in current_variables.items():
+      KeeperManager.add_config_variable(target_project_id, key, value, app)
