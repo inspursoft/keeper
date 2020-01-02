@@ -155,36 +155,34 @@ def release(action):
 
 @bp.route("/variables", methods=["POST"])
 def config_variables():
-  data = request.get_json()
-  current_app.logger.debug(data)
-  project = data["project"]
-  username = data["user_name"]
-  ref = data["ref"]
   config_repo = request.args.get("config_repo", None)
   if not config_repo:
-    config_repo = project["path_with_namespace"]
+    return abort(400, "Config repo name is required.")
   target_repo = request.args.get("target_repo", None)
   if not target_repo:
     return abort(400, "Target repo name is required.")
+  operator = request.args.get("operator", None)
+  if not operator:
+    return abort(400, "Operator name is required.")
   file_path = request.args.get("file_path", None)
   if not file_path:
     return abort(400, "File path is required.")
   branch = request.args.get("branch", None)
   if not branch:
-    branch = ref[ref.rindex("/") + 1:]
+    branch = "master"
   try:
-    config_project = KeeperManager.resolve_project(username, config_repo, current_app)
+    config_project = KeeperManager.resolve_project(operator, config_repo, current_app)
   except KeeperException as e:
     current_app.logger.error("Failed to retrieve config repo: %s", e.message)
-    return abort(401, "Unauthorized to access config repo: %s with operator %s" % (config_repo, username))
+    return abort(401, "Unauthorized to access config repo: %s with operator %s" % (config_repo, operator))
   try:
-    target_project = KeeperManager.resolve_project(username, target_repo, current_app)
+    target_project = KeeperManager.resolve_project(operator, target_repo, current_app)
   except KeeperException as e:
     current_app.logger.error(e.message)
     return abort(e.code, e.message)
   try:
     config_project_id = config_project.project_id
-    current_app.logger.debug("Config variable from the repository: %s at branch %s with file: %s, operator: %s", config_repo, branch, file_path, username)
+    current_app.logger.debug("Config variable from the repository: %s at branch %s with file: %s, operator: %s", config_repo, branch, file_path, operator)
     target_project_id = target_project.project_id
     current_app.logger.debug("Set variable to the repository: %s", target_project.project_name)
     KeeperManager.resolve_config_variables(config_project_id, target_project_id, file_path, branch, current_app)
