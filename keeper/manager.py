@@ -717,22 +717,6 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method="DELETE")
 
   @staticmethod
-  def add_or_update_repository_file(project_id, action, file_path, content, branch, user, app):
-    method="POST"
-    if action == "update":
-      method="PUT"
-    app.logger.debug("%s file %s to the repository with project ID: %s", action.capitalize(),file_path, project_id)
-    request_url = "%s/projects/%d/repository/files/%s" % (KeeperManager.get_gitlab_api_url(), project_id, file_path)
-    params = {
-      "branch": branch,
-      "author_name": user.username,
-      "author_email": "%s@inspur.com" % (user.username,),
-      "content": content,
-      "commit_message": "Update file: %s" % (file_path,)
-    }
-    return KeeperManager.request_gitlab_api(project_id, request_url, app, method=method, params=params)
-
-  @staticmethod
   def resolve_config_variables(config_project_id, target_project_id, file_path, branch, app):
     last_variables = KeeperManager.get_config_variables(target_project_id, app)
     content = KeeperManager.get_repository_raw_file(config_project_id, file_path, branch, app)
