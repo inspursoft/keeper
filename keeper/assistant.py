@@ -147,10 +147,8 @@ def release(action):
     current_app.logger.debug(commit_info)
     message = "Successful %s release." % (action)
   except KeeperException as ke:
-    if ke.code == 400:
-      return abort(ke.code, ke.message)
-    else:
-      message = "Failed to release: %s" % (ke,)
+    message = "Failed to perform action with message %s" % (ke.message)
+    current_app.logger.error("Failed to perform action with message: %s", ke.message)
   return message
 
 @bp.route("/variables", methods=["POST"])
