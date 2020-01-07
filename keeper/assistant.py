@@ -146,11 +146,13 @@ def release():
     current_app.logger.debug(commit_info)
     return "Successful release to the repo: %s with branch: %s and version: %s" % (release_repo, release_branch, version_info)
   except KeeperException as ke:
-    if ke.code == 400:
+    try:
       commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("update"), current_app)
       current_app.logger.debug(commit_info)
-    else:
-      return abort(ke.code, ke.message)
+      return "Retried to release repo: %s to the branch: %s and version: %s with another update action" % (release_repo, release_branch, version_info)
+    except KeeperException as ke:
+      current_app.logger.error("Failed to release repo: %s", release_repo)
+      return "Failed to release repo: %s" % (release_repo,)
 
 @bp.route("/variables", methods=["POST"])
 def config_variables():
