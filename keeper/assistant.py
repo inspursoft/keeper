@@ -141,15 +141,9 @@ def release(action):
   actions = []
   actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
   actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
-  message = ""
-  try:
-    commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), actions, current_app)
-    current_app.logger.debug(commit_info)
-    message = "Successful %s release." % (action)
-  except KeeperException as ke:
-    message = "Failed to perform action with message %s" % (ke.message)
-    current_app.logger.error("Failed to perform action with message: %s", ke.message)
-  return message
+  commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), actions, current_app)
+  current_app.logger.debug(commit_info)
+  return "Successful %s release." % (action)
 
 @bp.route("/variables", methods=["POST"])
 def config_variables():
