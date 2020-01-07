@@ -141,18 +141,19 @@ def release():
     actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
     actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
     return actions
+  message = ""
   try:
-    commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("create"), current_app)
-    current_app.logger.debug(commit_info)
-    return "Successful release to the repo: %s with branch: %s and version: %s" % (release_repo, release_branch, version_info)
+    KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("create"), current_app)
+    message = "Successful release to the repo: %s with branch: %s and version: %s" % (release_repo, release_branch, version_info)
+    current_app.logger.debug(message)
   except KeeperException as ke:
     try:
-      commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("update"), current_app)
-      current_app.logger.debug(commit_info)
-      return "Retried to release repo: %s to the branch: %s and version: %s with another update action" % (release_repo, release_branch, version_info)
+      KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("update"), current_app)
+      message = "Retried to release repo: %s to the branch: %s and version: %s with another update action" % (release_repo, release_branch, version_info)
     except KeeperException as ke:
-      current_app.logger.error("Failed to release repo: %s", release_repo)
-      return "Failed to release repo: %s" % (release_repo,)
+      message = "Failed to release repo: %s" % (release_repo,)
+      current_app.logger.error(message)
+  return message
 
 @bp.route("/variables", methods=["POST"])
 def config_variables():
