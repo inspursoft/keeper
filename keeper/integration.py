@@ -355,15 +355,12 @@ def tag_release():
     return "Bypass for none of checkout SHA or ref."
   
   current_app.logger.debug("Version info: %s", version_info)
-  message = ""
   def request_release_url():
     release_url = urljoin("http://localhost:5000", url_for("assistant.release", operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha, version_info=version_info))
     current_app.logger.debug("Release URL: %s", release_url)
     resp = requests.post(release_url)
-    message = "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
-    if resp.status_code == 400:
-      raise KeeperException(400, resp.text)
-    return message
+    return "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
+  message = ""
   try:
     message = request_release_url()
   except KeeperException as e:
