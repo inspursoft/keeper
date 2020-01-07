@@ -113,10 +113,8 @@ def store():
   except KeeperException as e:
     return abort(e.code, "Failed to manipulate store: %s"% (e.message,))
 
-@bp.route("/release/<action>", methods=["POST"])
-def release(action):
-  if not action:
-    return abort(400, "Bad request action for release.")
+@bp.route("/release", methods=["POST"])
+def release():
   operator = request.args.get("operator")
   if not operator:
     return abort(400, "Operator is required.")
@@ -138,12 +136,21 @@ def release(action):
     KeeperManager.create_branch(project_id, version_info, release_branch, current_app)
   except KeeperException as ke:
     current_app.logger.error(ke)
-  actions = []
-  actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
-  actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
-  commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), actions, current_app)
-  current_app.logger.debug(commit_info)
-  return "Successful %s release." % (action)
+  def prepare_actions(action):
+    actions = []
+    actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
+    actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
+    return actions
+  try:
+    commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("create"), current_app)
+    current_app.logger.debug(commit_info)
+    return "Successful release to the repo: %s with branch: %s and version: %s" % (release_repo, release_branch, version_info)
+  except KeeperException as ke:
+    if ke.code == 400:
+      commit_info = KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("update"), current_app)
+      current_app.logger.debug(commit_info)
+    else:
+      return abort(ke.code, ke.message)
 
 @bp.route("/variables", methods=["POST"])
 def config_variables():

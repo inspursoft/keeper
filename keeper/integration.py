@@ -356,8 +356,8 @@ def tag_release():
   
   current_app.logger.debug("Version info: %s", version_info)
   message = ""
-  def request_release_url(action):
-    release_url = urljoin("http://localhost:5000", url_for("assistant.release", action=action, operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha, version_info=version_info))
+  def request_release_url():
+    release_url = urljoin("http://localhost:5000", url_for("assistant.release", operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha, version_info=version_info))
     current_app.logger.debug("Release URL: %s", release_url)
     resp = requests.post(release_url)
     message = "Requested URL: %s with status code: %d" % (release_url, resp.status_code)
@@ -365,11 +365,7 @@ def tag_release():
       raise KeeperException(400, resp.text)
     return message
   try:
-    message = request_release_url("create")
+    message = request_release_url()
   except KeeperException as e:
-    current_app.logger.error(e.message)
-    if e.code == 400:
-      message = request_release_url("update")
-    else:
-      message = "Failed to tag for release: %s" % (e,)
+    message = "Failed to tag for release: %s" % (e,)
   return message
