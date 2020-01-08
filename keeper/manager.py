@@ -705,6 +705,25 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, params={"value": value}, method="PUT")
 
   @staticmethod
+  def add_or_update_repository_file(project_id, action, file_path, content, branch, username, app):
+    if not action or action == "":
+      raise KeeperException(400, "Action for target is required.")
+    elif action not in ["create", "update"]:
+      raise KeeperException(400, "Only supporting create/update actions.")
+    app.logger.debug("%s repository file: %s to the branch: %s with project ID: %s", action.capitalize(), file_path, branch, project_id)
+    request_url = "%s/projects/%d/repository/files/%s" % (KeeperManager.get_gitlab_api_url(), project_id, file_path)
+    method = "POST"
+    if action == "update":
+      method = "PUT"
+    params = {"branch": branch, 
+      "author_name": username, 
+      "author_email": "%s@inspur.com" % (username,), 
+      "content": content,   
+      "commit_message": "%s for file: %s" % (action.capitalize(), file_path)}
+    app.logger.debug("File: %s with content: %s", file_path, content)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method=method, params=params)
+
+  @staticmethod
   def get_repository_raw_file(project_id, file_path, branch, app):
     app.logger.debug("Get file %s from repository with project ID: %s", file_path, project_id)
     request_url = "%s/projects/%d/repository/files/%s/raw?ref=%s" % (KeeperManager.get_gitlab_api_url(), project_id, file_path, branch)

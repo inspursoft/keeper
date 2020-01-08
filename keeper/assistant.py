@@ -113,8 +113,8 @@ def store():
   except KeeperException as e:
     return abort(e.code, "Failed to manipulate store: %s"% (e.message,))
 
-@bp.route("/release", methods=["POST"])
-def release():
+@bp.route("/release/<action>", methods=["POST"])
+def release(action):
   operator = request.args.get("operator")
   if not operator:
     return abort(400, "Operator is required.")
@@ -136,24 +136,17 @@ def release():
     KeeperManager.create_branch(project_id, version_info, release_branch, current_app)
   except KeeperException as ke:
     current_app.logger.error(ke)
-  def prepare_actions(action):
-    actions = []
-    actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
-    actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
-    return actions
   message = ""
   try:
-    KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("create"), current_app)
+    file_md = KeeperManager.resolve_action_from_store(category, ".md", current_app)
+    KeeperManager.add_or_update_repository_file(project_id, action, "install.md", file_md, release_branch, operator, current_app)
+    file_sh = KeeperManager.resolve_action_from_store(category, ".sh", current_app)
+    KeeperManager.add_or_update_repository_file(project_id, action, "install.sh", file_sh, release_branch, operator, current_app)
     message = "Successful release to the repo: %s with branch: %s and version: %s" % (release_repo, release_branch, version_info)
     current_app.logger.debug(message)
   except KeeperException as ke:
-    try:
-      KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("update"), current_app)
-      message = "Retried to release repo: %s to the branch: %s and version: %s with another update action" % (release_repo, release_branch, version_info)
-      current_app.logger.debug(message)
-    except KeeperException as ke0:
-      message = "Failed to release repo: %s, with error: %s" % (release_repo, ke0.message)
-      current_app.logger.error(message)
+    message = "Failed to release repo: %s, with error: %s" % (release_repo, ke.message)
+    current_app.logger.error(message)
   return message
 
 @bp.route("/variables", methods=["POST"])
