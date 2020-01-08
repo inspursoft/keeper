@@ -151,8 +151,8 @@ def release():
       KeeperManager.commit_files(project_id, version_info, "Release for %s" % (version_info,), prepare_actions("update"), current_app)
       message = "Retried to release repo: %s to the branch: %s and version: %s with another update action" % (release_repo, release_branch, version_info)
       current_app.logger.debug(message)
-    except KeeperException as ke:
-      message = "Failed to release repo: %s" % (release_repo,)
+    except KeeperException as ke0:
+      message = "Failed to release repo: %s, with error: %s" % (release_repo, ke0.message)
       current_app.logger.error(message)
   return message
 
