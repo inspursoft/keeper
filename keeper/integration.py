@@ -352,6 +352,7 @@ def tag_release():
     version_info = ref[ref.rindex("/") + 1:] + "-as-branch"
 
   if checkout_sha is None:
+    current_app.logger.debug("Bypass for none of checkout SHA or ref.")
     return "Bypass for none of checkout SHA or ref."
 
   current_app.logger.debug("Version info: %s", version_info)
