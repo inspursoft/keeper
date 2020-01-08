@@ -364,11 +364,10 @@ def tag_release():
   message = ""    
   try:
     message = request_with_action("create")
-  except KeeperException as ke:
-    if ke.code == 400:
-      message = request_with_action("update")
-    else:
+  except KeeperException:
+    try:
+      message = request_with_action("update")    
+    except KeeperException as ke:
       message = "Failed to request release URL with error: %s" % (ke.message,)
       current_app.logger.error(message)
   return message
-    
