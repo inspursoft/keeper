@@ -209,7 +209,7 @@ class KeeperManager:
       resp = requests.put(request_url, headers=default_headers, json=params)
     elif method == 'DELETE':
       resp = requests.delete(request_url, headers=default_headers)
-    if not dismiss_exception or resp.status_code >= 400:
+    if not dismiss_exception and resp.status_code >= 400:
       app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
       raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
     try:
