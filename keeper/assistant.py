@@ -136,17 +136,18 @@ def release(action):
     KeeperManager.create_branch(project_id, version_info, release_branch, current_app)
   except KeeperException as ke:
     current_app.logger.error(ke)
-  message = ""
-  for file_type in [".md", ".sh"]:
-    file_name = "install%s" % (file_type,)
-    file_content = KeeperManager.resolve_action_from_store(category, file_type, current_app)
-    try:
-      KeeperManager.add_or_update_repository_file(project_id, action, file_name, file_content, release_branch, operator, current_app)
-      message = "Successful released to the repo: %s with branch: %s and version: %s" % (release_repo, release_branch, version_info)
-      time.sleep(1)
-    except KeeperException as ke:
-      return abort(400, "Failed to add or update file: %s to the repository: %s" % (file_name, release_repo))
+  try:
+    actions = []
+    actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
+    actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
+    KeeperManager.commit_files(project_id, version_info, "Commit files to release", actions, current_app)
+    message = "Successful released to the repo: %s with branch: %s" % (release_repo, version_info)
     current_app.logger.debug(message)
+    return message
+  except KeeperException as ke:
+    message = "Failed to commit files to the repository: %s" % (release_repo,)
+    current_app.logger.error(message)
+    return abort(400, message)
   return message
 
 @bp.route("/variables", methods=["POST"])
