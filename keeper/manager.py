@@ -648,6 +648,15 @@ class KeeperManager:
     return stored
 
   @staticmethod
+  def get_from_store_by_key(category, key, app):
+    r = db.get_from_store_by_key(category, key, app)
+    if not r:
+      message = "None of result for store with category: %s and key: %s" % (category, key)
+      app.logger.error(message)
+      raise KeeperException(404, message)
+    return r["item_val"]
+
+  @staticmethod
   def add_to_store(category, store, app):
     for key in store:
       val = store[key]

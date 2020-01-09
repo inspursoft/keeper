@@ -109,6 +109,9 @@ def store():
       KeeperManager.remove_from_store(category, current_app)
       return jsonify(message="Successful removed item from store.")
     elif request.method == "GET":
+      key = request.args.get("key", None)
+      if key:
+        return KeeperManager.get_from_store_by_key(category, key, current_app)
       return jsonify(KeeperManager.get_from_store(category, current_app))
   except KeeperException as e:
     return abort(e.code, "Failed to manipulate store: %s"% (e.message,))

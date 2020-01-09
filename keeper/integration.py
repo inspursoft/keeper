@@ -178,6 +178,7 @@ def prepare_runner():
   project_id = project.project_id
   object_attr = data["object_attributes"]
   pipeline_id = object_attr["id"]
+  sha = object_attr["sha"]
   status = object_attr["status"]
   vm_base_name = "%s-runner-%s" % (abbr_name, base_repo_name)
   vm_name = "%s-%d" % (vm_base_name, pipeline_id)
@@ -199,6 +200,7 @@ def prepare_runner():
   try:
     ip_provision = KeeperManager.get_ip_provision(project_id, current_app)
     KeeperManager.reserve_ip_provision(ip_provision.id, current_app)
+    KeeperManager.add_to_store(sha, {"runner_ip": ip_provision.ip_address}, current_app)
     KeeperManager.register_ip_runner(ip_provision.id, pipeline_id, project_id, current_app)
   except KeeperException as e:
     current_app.logger.error(e.message)

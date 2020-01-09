@@ -271,6 +271,11 @@ def get_from_store(category, app):
     select item_key, item_val from store where category = ?
   ''', (category,)).fetchall()
 
+def get_from_store_by_key(category, key, app):
+  return get_db().execute('''
+    select item_val from store where category = ? and item_key = ?
+  ''', (category, key)).fetchone()
+
 def insert_into_store(category, key, val, app):
   proxied_execute(app, 'replace into store (category, item_key, item_val) values (?, ?, ?)', (category, key, val))
 
