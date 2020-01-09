@@ -189,7 +189,7 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
 
   @staticmethod
-  def request_gitlab_api(principle, request_url, app, method='POST', by_principle='project_id', params={}, resp_raw=False, dismiss_exception=False):
+  def request_gitlab_api(principle, request_url, app, method='POST', by_principle='project_id', params={}, resp_raw=False):
     r = None
     if by_principle == 'username':
       r = db.get_user_info(principle)
@@ -209,7 +209,7 @@ class KeeperManager:
       resp = requests.put(request_url, headers=default_headers, json=params)
     elif method == 'DELETE':
       resp = requests.delete(request_url, headers=default_headers)
-    if not dismiss_exception and resp.status_code >= 400:
+    if resp.status_code >= 400:
       app.logger.error("Failed to request URL: %s with status code: %d with content: %s", request_url, resp.status_code, resp.content)
       raise KeeperException(resp.status_code, "Failed to request URL: %s with status code: %d with content: %s" % (request_url, resp.status_code, resp.content))
     try:
@@ -721,7 +721,7 @@ class KeeperManager:
       "content": content,   
       "commit_message": "%s for file: %s" % (action.capitalize(), file_path)}
     app.logger.debug("File: %s with content: %s", file_path, content)
-    return KeeperManager.request_gitlab_api(project_id, request_url, app, method=method, params=params, dismiss_exception=True)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method=method, params=params)
 
   @staticmethod
   def get_repository_raw_file(project_id, file_path, branch, app):

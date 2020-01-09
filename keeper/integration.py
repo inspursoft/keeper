@@ -354,18 +354,23 @@ def tag_release():
   if checkout_sha is None:
     current_app.logger.debug("Bypass for none of checkout SHA or ref.")
     return "Bypass for none of checkout SHA or ref."
-  def request_with_action():
+  def request_with_action(action):
     current_app.logger.debug("Version info: %s", version_info)
-    for action in ["create", "update"]:
-      release_url = urljoin("http://localhost:5000", url_for("assistant.release", action=action, operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha, version_info=version_info))
-      resp = requests.post(release_url)
-      message = "Requested release URL: %s to create files, with status code: %s, and response content: %s" % (release_url, resp.status_code, resp.text)
-      current_app.logger.debug(message)
+    release_url = urljoin("http://localhost:5000", url_for("assistant.release", action=action, operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha, version_info=version_info))
+    resp = requests.post(release_url)
+    message = "Requested release URL: %s to %s files, with status code: %s" % (release_url, action, resp.status_code)
+    if resp.status_code == 400:
+      raise KeeperException(400, "Failed to request release URL: %s." % (release_url,))
+    current_app.logger.debug(message)
   message = ""
   try:
-    request_with_action()
-    message = "Successful released to the repository: %s to the branch: %s" % (release_repo, release_branch)
+    request_with_action("create")
+    message = "Successful released by creating file to the repository: %s for the branch: %s" % (release_repo, release_branch)
   except KeeperException as ke:
-    message = "Failed to request release URL with error: %s" % (ke.message,)
-    current_app.logger.error(message)
+    if ke.code == 400:
+      request_with_action("update")
+      message = "Retried to release by updating file to the repository: %s for the branch: %s" % (release_repo, release_branch)
+    else:
+      message = "Failed to request release URL with error: %s" % (ke.message,)
+  current_app.logger.debug(message)
   return message
