@@ -145,18 +145,20 @@ def runner_probe():
   if not status:
     return abort(400, "Status is required.")
   while not q.empty():
+    pipeline_task = q.get()
+    pipeline_id = pipeline_task.id
+    current_app.logger.debug("Got pipeline ID: %d from queue with priority: %d", pipeline_id, pipeline_task.priority)
     try:
-      pipeline_task = q.get()
-      pipeline_id = pipeline_task.id
-      current_app.logger.debug("Got pipeline ID: %d from queue with priority: %d", pipeline_id, pipeline_task.priority)
-      try:
-        KeeperManager.retry_pipeline(int(project_id), pipeline_id, current_app)
-      except KeeperException as e:
-        current_app.logger.error(e.message)
+      KeeperManager.get_ip_provision(project_id, current_app)
+      current_app.logger.debug("Pipeline: %d will be retried as the project pipeline jobs has been released.", pipeline_id)
+      KeeperManager.retry_pipeline(int(project_id), pipeline_id, current_app)
     except KeeperException as e:
-      current_app.logger.debug("Waiting for release IP to retry pipelines ...")
-    time.sleep(5)
-  return "None of queued pipelines."
+      q.put(pipeline_task)
+      current_app.logger.debug("Pipeline: %d was hanged up as the project pipeline jobs has been reserved by others.", pipeline_id)
+    time.sleep(3)
+  message = "None of queued pipelines."
+  current_app.logger.debug(message)
+  return message
 
 @bp.route("/runners", methods=["POST"])
 def prepare_runner():
@@ -168,7 +170,7 @@ def prepare_runner():
     return abort(400, "Username is required.")
   
   data = request.get_json()
-  current_app.logger.debug(data)
+  #current_app.logger.debug(data)
   project = data["project"]
   abbr_name = project["name"]
   project_name = project["path_with_namespace"]
