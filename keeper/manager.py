@@ -267,7 +267,7 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, params=params)
 
   @staticmethod
-  def resolve_action_from_store(category, file_type, app):
+  def resolve_action_from_store(category, file_type, app, project_name=None, version_info=None):
     store = KeeperManager.get_from_store(category, app)
     contents = ""
     if file_type == ".sh":
@@ -278,6 +278,9 @@ class KeeperManager:
       elif file_type == ".sh":
         contents += key + "=" + '"{}"'.format(store[key])
       contents += "\n"
+    if file_type == ".sh":
+      versions = KeeperManager.get_versions_by_project_name(project_name, app)
+      contents += KeeperManager.resolve_db_migration_command(version_info, versions, app)
     app.logger.debug("Generated contents with file type: %s, content: %s", file_type, contents)
     return contents
 
@@ -667,6 +670,38 @@ class KeeperManager:
   def remove_from_store(category, app):
     db.delete_from_store(category, app)
     app.logger.debug("Removed category: %s", category)
+
+  @staticmethod
+  def get_versions_by_project_name(project_name, app):
+    results = db.get_from_store_filtered_value_by_criteron(project_name + "-", app)
+    if len(results) == 0:
+      raise KeeperException(404, "No filtered versions found with project: %s" % (project_name,))
+    versions = []
+    for r in results:
+      line = r["item_val"]
+      if line.find("-") == -1:
+        app.logger.debug("Bypass for irregular line format: %s (does not contain hyphen)", line)
+        continue
+      parts = line.split("-")
+      if len(parts) > 1:
+        versions.append(parts[1])
+    versions.sort(reverse=True)
+    return versions
+
+  @staticmethod
+  def resolve_db_migration_command(current, versions, app):
+    greater = True
+    directive = "upgrade"
+    revised_version = current.replace(".", "_")
+    for i, v in enumerate(versions):
+      if v == current:
+        if i > 0:
+          greater = False
+          break
+    if not greater:
+      directive = "downgrade"
+    command = "alembic {} {}".format(directive, revised_version)
+    return command
 
   @staticmethod
   def resolve_project_with_priority(username, project_name, app):

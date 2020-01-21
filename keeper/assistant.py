@@ -118,19 +118,25 @@ def store():
 
 @bp.route("/release/<action>", methods=["POST"])
 def release(action):
-  operator = request.args.get("operator")
+  operator = request.args.get("operator", None)
   if not operator:
     return abort(400, "Operator is required.")
-  release_branch = request.args.get("release_branch")
+  release_branch = request.args.get("release_branch", None)
   if not release_branch:
     return abort("Release branch is required.")
-  release_repo = request.args.get("release_repo")
+  release_repo = request.args.get("release_repo", None)
   if not release_repo:
     return abort(400, "Release repo is required.")
-  version_info = request.args.get("version_info")
+  version_info = request.args.get("version_info", None)
   if not version_info:
     return abort(400, "Version info is required.")
-  category = request.args.get("category")
+  project_name = request.args.get("project_name", None)
+  if not project_name:
+    project_name = "N/A"
+  version = request.args.get("version", None)
+  if not version:
+    version = "N/A"
+  category = request.args.get("category", None)
   if not category:
     return abort(400, "Category is required.")
   project = KeeperManager.resolve_project(operator, release_repo, current_app)
@@ -142,7 +148,7 @@ def release(action):
   try:
     actions = []
     actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
-    actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app)})
+    actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app, project_name, version)})
     KeeperManager.commit_files(project_id, version_info, "Commit files to release", actions, current_app)
     message = "Successful released to the repo: %s with branch: %s" % (release_repo, version_info)
     current_app.logger.debug(message)

@@ -337,9 +337,10 @@ def tag_release():
   current_app.logger.debug(data)
   object_kind = data["object_kind"]
   current_app.logger.debug("Current object kind is %s", object_kind)
-
+  project = data["project"]
   checkout_sha = ""
   ref = ""
+  version = ""
   version_info = ""
   if object_kind == "pipeline":
     object_attr = data["object_attributes"]
@@ -349,18 +350,24 @@ def tag_release():
     current_app.logger.debug("Handle pipeline with tag for release repo: %s, release branch: %s" % (release_repo, release_branch))
     checkout_sha = object_attr["sha"]
     ref = object_attr["ref"]
+    version = ref
     version_info = ref + "-as-branch"
   else:
     checkout_sha = data["checkout_sha"]
     ref = data["ref"]
-    version_info = ref[ref.rindex("/") + 1:] + "-as-branch"
+    version = ref[ref.rindex("/") + 1:]
+    version_info = version + "-as-branch"
 
   if checkout_sha is None:
     current_app.logger.debug("Bypass for none of checkout SHA or ref.")
     return "Bypass for none of checkout SHA or ref."
+  project_name = project["name"]
+  KeeperManager.add_to_store(checkout_sha, {"repo_version": "%s-%s" %(project_name, version)}, current_app)
   def request_with_action(action):
     current_app.logger.debug("Version info: %s", version_info)
-    release_url = urljoin("http://localhost:5000", url_for("assistant.release", action=action, operator=username, release_repo=release_repo, release_branch=release_branch, category=checkout_sha, version_info=version_info))
+    release_url = urljoin("http://localhost:5000", url_for("assistant.release", action=action, operator=username, 
+    release_repo=release_repo, release_branch=release_branch, category=checkout_sha, 
+    version_info=version_info, project_name=project_name, version=version))
     resp = requests.post(release_url)
     message = "Requested release URL: %s to %s files, with status code: %s" % (release_url, action, resp.status_code)
     if resp.status_code == 400:
@@ -378,3 +385,17 @@ def tag_release():
       message = "Failed to request release URL with error: %s" % (ke.message,)
   current_app.logger.debug(message)
   return message
+
+@bp.route("/release/revert", methods=["POST"])
+def merge_to_release():
+  project_name = request.args.get("project_name", None)
+  if not project_name:
+    return abort("Project name is required.")
+  data = request.get_json()
+  current_app.logger.debug(data)
+  object_attr = data["object_attributes"]
+  target_branch = object_attr["target_branch"]
+  versions = KeeperManager.get_versions_by_project_name(project_name, current_app)
+  command = KeeperManager.resolve_db_migration_command(target_branch, versions, current_app)
+  current_app.logger.debug("command: %s", command)
+  return command

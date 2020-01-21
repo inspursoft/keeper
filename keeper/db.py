@@ -276,6 +276,9 @@ def get_from_store_by_key(category, key, app):
     select item_val from store where category = ? and item_key = ?
   ''', (category, key)).fetchone()
 
+def get_from_store_filtered_value_by_criteron(criteron, app):
+  return get_db().execute('select item_val from store where item_val like "{}%"'.format(criteron,)).fetchall()
+
 def insert_into_store(category, key, val, app):
   proxied_execute(app, 'replace into store (category, item_key, item_val) values (?, ?, ?)', (category, key, val))
 
