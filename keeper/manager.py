@@ -152,7 +152,7 @@ class KeeperManager:
   @staticmethod
   def get_gitlab_runners(project_id, app):
     app.logger.debug("Get gitlab runner with project ID: %d", project_id)
-    request_url = "%s/projects/%d/runners" % (KeeperManager.get_gitlab_api_url(), project_id)
+    request_url = "%s/projects/%d/runners?per_page=300" % (KeeperManager.get_gitlab_api_url(), project_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method='GET')
 
   @staticmethod
