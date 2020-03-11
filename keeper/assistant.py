@@ -196,3 +196,40 @@ def config_variables():
   except KeeperException as e:
     current_app.logger.debug("Failed to handle config variables: %s", e)
     return abort(e.code, e.message)
+
+@bp.route("/files", methods=["GET", "POST", "PUT"])
+def resolve_repo_files():
+  username = request.args.get("username", None)
+  if not username:
+    return abort(400, "Username is required.")
+  project_name = request.args.get("project_name", None)
+  if not project_name:
+    return abort(400, "Project name is required.")
+  file_path = request.args.get("file_path", None)
+  if not file_path:
+    file_path = ".gitlab-ci.yml"
+  branch = request.args.get("branch", None)
+  if not branch:
+    branch = "master"
+  current_app.logger.debug("Retrieve files: %s from project: %s at branch: %s", file_path, project_name, branch)
+  try:
+    if request.method == "GET":
+      content = KeeperManager.retrieve_files_from_repo(username, project_name, file_path, branch, current_app)
+      return jsonify(content=content)
+    else:
+      data = request.get_json()
+      if not data:
+        return abort(400, "Missing request data in body.")
+      if "content" not in data:
+        return abort(400, "Request data is missing content.")
+      content = data["content"]
+      action = ""
+      if request.method == "POST":
+        action = "create"
+      elif request.method == "PUT":
+        action = "update"
+      KeeperManager.commit_file_to_repo(username, project_name, action, file_path, branch, content, current_app)
+      return "Successful %s file: %s to the branch: %s to the project: %s" % (action, file_path, branch, project_name)
+  except KeeperException as e:
+    current_app.logger.debug("Failed to retrieve files: %s", e)
+    return abort(e.code, e.message)

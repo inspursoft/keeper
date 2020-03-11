@@ -788,3 +788,15 @@ class KeeperManager:
       KeeperManager.delete_config_variable(target_project_id, config["key"], app)
     for key, value in current_variables.items():
       KeeperManager.add_config_variable(target_project_id, key, value, app)
+
+  @staticmethod
+  def retrieve_files_from_repo(username, project_name, file_path, branch, app):
+    project = KeeperManager.resolve_project(username, project_name, app)
+    return KeeperManager.get_repository_raw_file(project.project_id, file_path, branch, app)
+
+  @staticmethod
+  def commit_file_to_repo(username, project_name, action, file_path, branch, content, app):
+    project = KeeperManager.resolve_project(username, project_name, app)
+    commit_message = "%s file: %s" % (action.capitalize(), file_path)
+    actions = [{"action": action, "file_path": file_path, "content": content}]
+    return KeeperManager.commit_files(project.project_id, branch, commit_message, actions, app)
