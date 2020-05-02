@@ -172,7 +172,7 @@ def get_available_ip():
 
 def get_reserved_runner_by_project(project_id):
   return get_db().execute(
-    '''select ip_provision_id, project_id, runner_id, pipeline_id
+    '''select ip_provision_id, project_id, runner_id, pipeline_id, is_power_on, is_canceled
           from ip_runner
          where project_id = ?''', (project_id,)
   ).fetchone()
@@ -252,6 +252,12 @@ def insert_ip_runner(ip_provision_id, pipeline_id, project_id, app):
 
 def update_ip_runner(ip_provision_id, runner_id, app):
   proxied_execute(app, 'update ip_runner set runner_id = ? where ip_provision_id = ?', (runner_id, ip_provision_id))
+
+def update_ip_runner_power_status(ip_provision_id, project_id, is_power_on, app):
+  proxied_execute(app, 'update ip_runner set is_power_on = ? where ip_provision_id = ? and project_id = ?', (is_power_on, ip_provision_id, project_id))
+
+def update_ip_runner_cancel_status(project_id, is_canceled, app):
+  proxied_execute(app, 'update ip_runner set is_canceled = ? where project_id = ?', (is_canceled, project_id))
 
 def remove_ip_runner(ip_provision_id, app):
   proxied_execute(app, 'delete from ip_runner where ip_provision_id = ?', (ip_provision_id,))

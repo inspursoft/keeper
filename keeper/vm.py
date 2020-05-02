@@ -85,6 +85,11 @@ def vm():
     try:
       current = current_app._get_current_object()
       def callback():
+        if KeeperManager.get_runner_cancel_status(project_id, current):
+          KeeperManager.update_runner_power_status(username, project_name, ip_provision_id, 0, current)
+          message = "VM would not be created as it has been signaled to cancel."
+          current.logger.debug(message)
+          return jsonify(message=message)
         KeeperManager.unregister_inrelevant_runner(project_id, vm_name, current)
         manager = KeeperManager(current, vm_name)
         if manager.check_vm_exists():

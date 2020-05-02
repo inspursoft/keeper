@@ -529,6 +529,11 @@ class KeeperManager:
     db.update_runner_token(runner_token, project.project_id, app)
 
   @staticmethod
+  def update_runner_power_status(username, project_name, ip_provision_id, is_power_on, app):
+    project = KeeperManager.resolve_user_project(username, project_name, app)
+    db.update_ip_runner_power_status(ip_provision_id, project.project_id, is_power_on, app)
+
+  @staticmethod
   def post_issue_per_sonarqube(sonarqube_token, sonarqube_project_name, serverties, created_in_last, app):
     resp = KeeperManager.search_sonarqube_issues(sonarqube_token, sonarqube_project_name, app, serverties, created_in_last)
     issues = resp["issues"]
@@ -581,6 +586,8 @@ class KeeperManager:
       ip = ips[random.randint(1, len(ips)) - 1]
       app.logger.debug("Allocated IP: %s, with ID: %s", ip["ip_address"], ip["id"])
       return IPProvision(ip["id"], ip["ip_address"])
+    elif r["is_power_on"] == 1:
+      raise KeeperException(412, "Runner has signaled to power on.")
     raise KeeperException(409, "IP runner already reserved.")
 
   @staticmethod
@@ -606,6 +613,26 @@ class KeeperManager:
   @staticmethod
   def unregister_ip_runner(runner_id, app):
     db.remove_ip_runner(runner_id, app)
+
+  @staticmethod
+  def get_runner_power_status(project_id, app):
+    r = db.get_reserved_runner_by_project(project_id)
+    if r and r["is_power_on"] == 1:
+      app.logger.debug("Runner reserved by project ID: %d has powered on.")
+      return True
+    return False
+
+  @staticmethod
+  def cancel_runner_status(project_id, app):
+    db.update_ip_runner_cancel_status(project_id, 1, app)
+
+  @staticmethod
+  def get_runner_cancel_status(project_id, app):
+    r = db.get_reserved_runner_by_project(project_id)
+    if r and r["is_canceled"] == 1:
+      app.logger.debug("Runner reserved by project ID: %d has been canceled.")
+      return True
+    return False
 
   @staticmethod
   def release_ip_runner_on_success(pipeline_id, status, app):

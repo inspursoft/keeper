@@ -73,7 +73,9 @@ create table ip_runner (
   ip_provision_id integer not null,
   project_id integer not null,
   runner_id integer,
-  pipeline_id integer not null
+  pipeline_id integer not null,
+  is_power_on integer not null default 0,
+  is_canceled integer not null default 0
 );
 
 create table store (
