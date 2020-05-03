@@ -586,8 +586,8 @@ class KeeperManager:
       ip = ips[random.randint(1, len(ips)) - 1]
       app.logger.debug("Allocated IP: %s, with ID: %s", ip["ip_address"], ip["id"])
       return IPProvision(ip["id"], ip["ip_address"])
-    elif r["is_canceled"] == 1:
-      raise KeeperException(412, "Runner has signaled to cancel.")
+    elif r["is_power_on"] == 1:
+      raise KeeperException(412, "Runner has signaled to power on, please wait for it to recycle.")
     raise KeeperException(409, "IP runner already reserved.")
 
   @staticmethod

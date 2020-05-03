@@ -94,10 +94,10 @@ def vm():
         manager.copy_vm_files()
         current.logger.debug(manager.create_vm())
         if KeeperManager.get_runner_cancel_status(project_id, current):
-            recycle_vm(current, vm_name, project_id, pipeline_id)
-            message = "VM: %s for project: %d, pipeline: %d would be recycled as it has been signaled to cancel." % (vm_name, project_id, pipeline_id)
-            current.logger.debug(message)
-            return jsonify(message=message)
+          message = "VM: %s for project: %d, pipeline: %d would be recycled as it has been signaled to cancel." % (vm_name, project_id, pipeline_id)
+          current.logger.debug(message)
+          recycle_vm(current, vm_name, project_id, pipeline_id)
+          return jsonify(message=message)
         try:
           info = manager.get_vm_info()
           vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")

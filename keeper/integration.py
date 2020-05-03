@@ -191,11 +191,12 @@ def prepare_runner():
     current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
   threading.Thread(target=callback).start()
   if status in ["success", "canceled", "failed"]:
-    if status == "canceled":
+    if status == "canceled" and KeeperManager.get_runner_power_status():
       KeeperManager.cancel_runner_status(project_id, current_app)
       current_app.logger.debug("Runner reserved by project: %d, pipline: %d, has already canceled...", project_id, pipeline_id)
-    current_app.logger.debug("Runner mission is %s will be removing it...", status)
-    recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
+    else:
+      current_app.logger.debug("Runner mission is %s will be removing it...", status)
+      recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
     current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
     return jsonify(message="VM would not be re-created as the pipeline is same with last one.")
@@ -217,6 +218,8 @@ def prepare_runner():
     return abort(e.code, e.message)
   current_app.logger.debug("Runner with pipeline: %d status is %s, with IP provision ID: %d, IP: %s", pipeline_id, status, ip_provision.id, ip_provision.ip_address)
   try:
+    KeeperManager.update_runner_power_status(username, project_name, ip_provision_id, 1, current_app)
+    current_app.logger.debug("Runner with project: %s has powered on, will create it in a short while." % (project_name,))
     vm_conf = {
       "vm_box": get_info("VM_CONF")["VM_BOX"],
       "vm_memory": get_info("VM_CONF")["VM_MEMORY"],
