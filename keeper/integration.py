@@ -218,8 +218,6 @@ def prepare_runner():
     return abort(e.code, e.message)
   current_app.logger.debug("Runner with pipeline: %d status is %s, with IP provision ID: %d, IP: %s", pipeline_id, status, ip_provision.id, ip_provision.ip_address)
   try:
-    KeeperManager.update_runner_power_status(username, project_name, ip_provision.id, 1, current_app)
-    current_app.logger.debug("Runner with project: %s has powered on, will create it in a short while." % (project_name,))
     vm_conf = {
       "vm_box": get_info("VM_CONF")["VM_BOX"],
       "vm_memory": get_info("VM_CONF")["VM_MEMORY"],
@@ -229,6 +227,7 @@ def prepare_runner():
     }
     request_url = urljoin("http://localhost:5000", url_for("vm.vm", name=vm_name, username=username, project_id=project_id, project_name=project_name, status=status))
     resp = requests.post(request_url, json=vm_conf, params={"ip_provision_id": ip_provision.id, "pipeline_id": pipeline_id})
+    KeeperManager.update_runner_power_status(username, project_name, ip_provision.id, 1, current_app)
     message = "Requested URL: %s with status code: %d, update target VM power status as powered on." % (request_url, resp.status_code)
     current_app.logger.debug(message)
     return message
