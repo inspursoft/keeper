@@ -218,7 +218,7 @@ def prepare_runner():
     return abort(e.code, e.message)
   current_app.logger.debug("Runner with pipeline: %d status is %s, with IP provision ID: %d, IP: %s", pipeline_id, status, ip_provision.id, ip_provision.ip_address)
   try:
-    KeeperManager.update_runner_power_status(username, project_name, ip_provision_id, 1, current_app)
+    KeeperManager.update_runner_power_status(username, project_name, ip_provision.id, 1, current_app)
     current_app.logger.debug("Runner with project: %s has powered on, will create it in a short while." % (project_name,))
     vm_conf = {
       "vm_box": get_info("VM_CONF")["VM_BOX"],
