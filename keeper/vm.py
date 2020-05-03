@@ -103,6 +103,7 @@ def vm():
           vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
           runner = KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
           KeeperManager.update_ip_runner(ip_provision_id, runner.runner_id, current)
+          KeeperManager.update_runner_power_status(username, project_name, ip_provision_id, 0, current)
         except KeeperException as e0:
           current.logger.error("Failed to get runner: %s", e0)
       SubTaskUtil.set(current_app, callback).start()
