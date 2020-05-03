@@ -618,7 +618,7 @@ class KeeperManager:
   def get_runner_power_status(project_id, app):
     r = db.get_reserved_runner_by_project(project_id)
     if r and r["is_power_on"] == 1:
-      app.logger.debug("Runner reserved by project ID: %d has powered on.")
+      app.logger.debug("Runner reserved by project ID: %d has powered on.", project_id)
       return True
     return False
 
@@ -630,7 +630,7 @@ class KeeperManager:
   def get_runner_cancel_status(project_id, app):
     r = db.get_reserved_runner_by_project(project_id)
     if r and r["is_canceled"] == 1:
-      app.logger.debug("Runner reserved by project ID: %d has been canceled.")
+      app.logger.debug("Runner reserved by project ID: %d has been canceled.", project_id)
       return True
     return False
 
