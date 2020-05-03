@@ -191,7 +191,7 @@ def prepare_runner():
     current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
   threading.Thread(target=callback).start()
   if status in ["success", "canceled", "failed"]:
-    if status == "canceled" and KeeperManager.get_runner_power_status():
+    if status == "canceled" and KeeperManager.get_runner_power_status(project_id, current_app):
       KeeperManager.cancel_runner_status(project_id, current_app)
       current_app.logger.debug("Runner reserved by project: %d, pipline: %d, has already canceled...", project_id, pipeline_id)
     else:
