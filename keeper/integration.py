@@ -191,15 +191,10 @@ def prepare_runner():
     current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
   threading.Thread(target=callback).start()
   if status in ["success", "canceled", "failed"]:
-    if status == "canceled":
-      power_status = KeeperManager.get_runner_power_status(project_id, current_app)
-      if power_status == KeeperManager.powering_on:
-        current_app.logger.debug("Runner reserved by project: %d, pipline: %d, is being canceled...", project_id, pipeline_id)
-        KeeperManager.cancel_runner_status(project_id, current_app)
-      if power_status == KeeperManager.powered_on:
-        current_app.logger.debug("Runner reserved by project: %d, pipeline: %d, has powered on and will recycle it..", project_id, pipeline_id)
-        recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
-    else:
+    if status == "canceled" and KeeperManager.get_runner_power_status(project_id, current_app)
+      current_app.logger.debug("Runner reserved by project: %d, pipline: %d, is being canceled...", project_id, pipeline_id)
+      KeeperManager.cancel_runner_status(project_id, current_app)
+    else: 
       current_app.logger.debug("Runner mission is %s will be removing it...", status)
       recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
@@ -230,9 +225,9 @@ def prepare_runner():
       "runner_name": vm_name,
       "runner_tag": "%s-vm" % (vm_base_name)
     }
+    KeeperManager.update_runner_power_status(username, project_name, ip_provision.id, KeeperManager.powered_on, current_app)
     request_url = urljoin("http://localhost:5000", url_for("vm.vm", name=vm_name, username=username, project_id=project_id, project_name=project_name, status=status))
     resp = requests.post(request_url, json=vm_conf, params={"ip_provision_id": ip_provision.id, "pipeline_id": pipeline_id})
-    KeeperManager.update_runner_power_status(username, project_name, ip_provision.id, KeeperManager.powering_on, current_app)
     message = "Requested URL: %s with status code: %d, update target VM power status as powered on." % (request_url, resp.status_code)
     current_app.logger.debug(message)
     return message
