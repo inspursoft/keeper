@@ -138,7 +138,7 @@ def check_user_project(username, project_name, app):
       ''', (username, project_name)
     ).fetchone()
 
-def check_project_runner(project_name, vm_name, runner_id, snapshot_name, app):
+def check_project_runner(project_id, vm_name, runner_id, snapshot_name, app):
   return get_db().execute(
     '''select count() as cnt from runner r
         left join project_runner pr on r.runner_id = pr.runner_id
@@ -146,7 +146,16 @@ def check_project_runner(project_name, vm_name, runner_id, snapshot_name, app):
         left join vm v on v.vm_id = pr.vm_id
         left join vm_snapshot vs on vs.vm_id = pr.vm_id
         where p.project_id = ? and r.runner_id = ? and v.vm_name = ? and vs.snapshot_name = ?
-    ''', (project_name, runner_id, vm_name, snapshot_name)
+    ''', (project_id, runner_id, vm_name, snapshot_name)
+  ).fetchone()
+
+def check_project_related_runner(project_id):
+  return get_db().execute(
+    '''select count() as cnt from runner r
+        left join project_runner pr on r.runner_id = pr.runner_id
+        left join project p on p.project_id = pr.project_id
+        where p.project_id = ?
+    ''', (project_id)
   ).fetchone()
 
 def check_issue_exists(user_id, issue_hash):

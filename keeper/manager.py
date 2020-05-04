@@ -440,7 +440,7 @@ class KeeperManager:
     app.logger.debug("Obtained runner: %s in project runner registration." % runner)    
     if not snapshot:
       snapshot = Snapshot(vm.vm_id, 'N/A')
-    r = db.check_project_runner(project_name, vm.vm_name, runner.runner_id, snapshot.snapshot_name, app)
+    r = db.check_project_runner(project.project_id, vm.vm_name, runner.runner_id, snapshot.snapshot_name, app)
     if r['cnt'] == 0:
       db.insert_runner(runner, app)
       db.insert_project_runner(project, vm, runner, app)
@@ -592,6 +592,16 @@ class KeeperManager:
     elif r["is_canceled"] == 1:
       raise KeeperException(412, "Runner to the project has signaled to cancel, please wait for it to recycle.")
     raise KeeperException(409, "IP runner already reserved.")
+
+  @staticmethod
+  def check_project_related_runner(project_id, app):
+    r = db.check_project_related_runner(project_id)
+    count = r["cnt"]
+    if count > 0:
+      app.logger.debug("Found %d related runner to the project: %s", count, project_id)
+      return True
+    app.logger.debug("No found related runner to the project: %s", project_id)
+    return False
 
   @staticmethod
   def reserve_ip_provision(ip_provision_id, app):
