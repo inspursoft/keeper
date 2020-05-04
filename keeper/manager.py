@@ -594,16 +594,6 @@ class KeeperManager:
     raise KeeperException(409, "IP runner already reserved.")
 
   @staticmethod
-  def check_project_related_runner(project_id, app):
-    r = db.check_project_related_runner(project_id, KeeperManager.powered_on)
-    count = r["cnt"]
-    if count > 0:
-      app.logger.debug("Found %d related powered on runner(s) to the project: %s", count, project_id)
-      return True
-    app.logger.debug("No found related powered on runner to the project: %s", project_id)
-    return False
-
-  @staticmethod
   def reserve_ip_provision(ip_provision_id, app):
     db.update_ip_provision_by_id(ip_provision_id, 1, app)
 
