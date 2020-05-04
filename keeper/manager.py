@@ -644,16 +644,26 @@ class KeeperManager:
     return False
 
   @staticmethod
-  def release_ip_runner_on_success(project_id, pipeline_id, status, app):
+  def release_ip_runner_on_success(pipeline_id, status, app):
     app.logger.debug("Releasing pipeline ID: %s with status: %s", pipeline_id, status)
     r = db.get_ip_provision_by_pipeline(pipeline_id)
     if r:
       ip_provision_id = r["ip_provision_id"]
       ip_address = r["ip_address"]
       db.update_ip_provision_by_id(ip_provision_id, 0, app)
-      db.remove_ip_runner_by_project_id(project_id, app)
+      db.remove_ip_runner(ip_provision_id, app)
       app.logger.debug("Released IP: %s as %s.", ip_address, status)
-      
+  
+  @staticmethod
+  def release_ip_runner_on_failure(project_id, app):
+    app.logger.debug("Releasing runner with project ID: %d on failure.", project_id)
+    r = db.get_ip_provision_by_project(project_id)
+    if r:
+      ip_provision_id = r["ip_provision_id"]
+      db.update_ip_provision_by_id(ip_provision_id, 0, app)
+      db.remove_ip_runner(ip_provision_id, app)
+      app.logger.debug("Release IP provision for project: %s as failure", project_id)
+
   @staticmethod
   def register_runner(username, project_name, config, app):
     project = KeeperManager.resolve_project(username, project_name, app)
