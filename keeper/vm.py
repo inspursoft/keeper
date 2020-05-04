@@ -15,7 +15,7 @@ def recycle_vm(current_app, vm_name, project_id, pipeline_id, status="N/A"):
   except KeeperException as e:
     current_app.logger.error(e.message)
     current_app.logger.error("VM: %s for project: %d does not exist, will clean up pipeline, runner info as failure...", vm_name, project_id)
-    KeeperManager.release_ip_runner_on_failure(project_id)
+    KeeperManager.release_ip_runner_on_failure(project_id, current_app)
   finally:
     KeeperManager.release_ip_runner_on_success(pipeline_id, status, current_app)
     KeeperManager.unregister_runner_by_name(vm_name, current_app)
