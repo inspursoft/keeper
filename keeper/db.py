@@ -190,7 +190,7 @@ def get_ip_provision_by_project(project_id):
     '''select ir.ip_provision_id, ir.pipeline_id, ip.ip_address from ip_runner ir
           left join ip_provision ip on ip.id = ir.ip_provision_id
           where ir.project_id = ?
-    ''',(pipeline_id,)
+    ''',(project_id,)
   ).fetchone()
 
 def proxied_execute(app, sql, *data):
