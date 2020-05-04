@@ -527,6 +527,9 @@ class KeeperManager:
   def update_runner_token(username, project_name, runner_token, app):
     project = KeeperManager.resolve_user_project(username, project_name, app)
     db.update_runner_token(runner_token, project.project_id, app)
+ 
+  powering_on = 1
+  powered_on = 2
 
   @staticmethod
   def update_runner_power_status(username, project_name, ip_provision_id, is_power_on, app):

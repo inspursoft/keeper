@@ -93,6 +93,7 @@ def vm():
         manager.generate_vagrantfile(runner_token, vm_conf)
         manager.copy_vm_files()
         current.logger.debug(manager.create_vm())
+        KeeperManager.update_runner_power_status(username, project_name, ip_provision.id, KeeperManager.powered_on, current_app)
         if KeeperManager.get_runner_cancel_status(project_id, current):
           message = "VM: %s would be recycled as it has been signaled to cancel." % (vm_name,)
           current.logger.debug(message)
