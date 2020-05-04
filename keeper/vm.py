@@ -93,7 +93,6 @@ def vm():
         manager.generate_vagrantfile(runner_token, vm_conf)
         manager.copy_vm_files()
         current.logger.debug(manager.create_vm())
-        KeeperManager.update_runner_power_status(username, project_name, ip_provision_id, KeeperManager.powered_on, current)
         if KeeperManager.get_runner_cancel_status(project_id, current) and KeeperManager.powering_on == KeeperManager.get_runner_power_status(project_id, current):
           message = "VM: %s would be recycled as it has been signaled to cancel." % (vm_name,)
           current.logger.debug(message)
@@ -102,10 +101,12 @@ def vm():
         try:
           info = manager.get_vm_info()
           vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
-          runner = KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current_app)
+          runner = KeeperManager.register_project_runner(username, project_name, vm_name, vm, snapshot=None, app=current)
           KeeperManager.update_ip_runner(ip_provision_id, runner.runner_id, current)
         except KeeperException as e0:
           current.logger.error("Failed to get runner: %s", e0)
+        finally:
+          KeeperManager.update_runner_power_status(username, project_name, ip_provision_id, KeeperManager.powered_on, current)
       SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s has being created." % vm_name)
     except KeeperException as e:
