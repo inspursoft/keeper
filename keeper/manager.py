@@ -627,8 +627,9 @@ class KeeperManager:
       elif r["is_power_on"] == 2:
         app.logger.debug("Got runner status is powered on...")
         return KeeperManager.powered_on
-    else:
-      raise KeeperException(404, "No match power status found.")
+      else:
+        app.logger.debug("Got runner power status is initial...")
+        return r["is_power_on"]
 
   @staticmethod
   def cancel_runner_status(project_id, app):
