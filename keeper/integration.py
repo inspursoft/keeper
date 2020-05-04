@@ -193,7 +193,7 @@ def prepare_runner():
   if status in ["success", "canceled", "failed"]:
     if status == "canceled":
       current_app.logger.debug("Runner reserved by project: %d, pipline: %d, is being canceled...", project_id, pipeline_id)
-    KeeperManager.cancel_runner_status(project_id, current_app)
+      KeeperManager.cancel_runner_status(project_id, current_app)
     current_app.logger.debug("Runner mission is %s will be removing it...", status)
     recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
