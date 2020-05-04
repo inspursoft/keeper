@@ -149,13 +149,13 @@ def check_project_runner(project_id, vm_name, runner_id, snapshot_name, app):
     ''', (project_id, runner_id, vm_name, snapshot_name)
   ).fetchone()
 
-def check_project_related_runner(project_id):
+def check_project_related_runner(project_id, is_power_on):
   return get_db().execute(
     '''select count() as cnt from runner r
         left join project_runner pr on r.runner_id = pr.runner_id
         left join project p on p.project_id = pr.project_id
-        where p.project_id = ?
-    ''', (project_id,)
+        where p.project_id = ? and r.is_power_on = ?
+    ''', (project_id, is_power_on)
   ).fetchone()
 
 def check_issue_exists(user_id, issue_hash):

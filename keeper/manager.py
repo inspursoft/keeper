@@ -595,12 +595,12 @@ class KeeperManager:
 
   @staticmethod
   def check_project_related_runner(project_id, app):
-    r = db.check_project_related_runner(project_id)
+    r = db.check_project_related_runner(project_id, KeeperManager.powered_on)
     count = r["cnt"]
     if count > 0:
-      app.logger.debug("Found %d related runner to the project: %s", count, project_id)
+      app.logger.debug("Found %d related powered on runner(s) to the project: %s", count, project_id)
       return True
-    app.logger.debug("No found related runner to the project: %s", project_id)
+    app.logger.debug("No found related powered on runner to the project: %s", project_id)
     return False
 
   @staticmethod
