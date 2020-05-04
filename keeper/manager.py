@@ -528,7 +528,8 @@ class KeeperManager:
     project = KeeperManager.resolve_user_project(username, project_name, app)
     db.update_runner_token(runner_token, project.project_id, app)
  
-  powered_on = 1
+  powering_on = 1
+  powered_on = 2
 
   @staticmethod
   def update_runner_power_status(username, project_name, ip_provision_id, is_power_on, app):
@@ -619,10 +620,15 @@ class KeeperManager:
   @staticmethod
   def get_runner_power_status(project_id, app):
     r = db.get_reserved_runner_by_project(project_id)
-    if r and r["is_power_on"] == 1:
-      app.logger.debug("Runner reserved by project ID: %d has powered on.", project_id)
-      return True
-    return False
+    if r:
+      if r["is_power_on"] == 1:
+        app.logger.debug("Got runner status is powering on...")
+        return KeeperManager.powering_on
+      elif r["is_power_on"] == 2:
+        app.logger.debug("Got runner status is powered on...")
+        return KeeperManager.powered_on
+    else:
+      raise KeeperException(404, "No match power status found.")
 
   @staticmethod
   def cancel_runner_status(project_id, app):
