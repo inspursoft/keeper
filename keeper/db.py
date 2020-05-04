@@ -185,6 +185,14 @@ def get_ip_provision_by_pipeline(pipeline_id):
     ''',(pipeline_id,)
   ).fetchone()
 
+def get_ip_provision_by_project(project_id):
+  return get_db().execute(
+    '''select ir.ip_provision_id, ir.pipeline_id, ip.ip_address from ip_runner ir
+          left join ip_provision ip on ip.id = ir.ip_provision_id
+          where ir.project_id = ?
+    ''',(pipeline_id,)
+  ).fetchone()
+
 def proxied_execute(app, sql, *data):
   if "CONN" in app.config and app.config["CONN"]:
     c = app.config["CONN"]
