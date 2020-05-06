@@ -190,13 +190,12 @@ def prepare_runner():
     resp = requests.get(probe_request_url)
     current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
   threading.Thread(target=callback).start()
-  if status in ["success", "canceled", "failed"]:
-    if status == "canceled":
-      current_app.logger.debug("Runner reserved by project: %d, pipline: %d, is being canceled...", project_id, pipeline_id)
-      KeeperManager.cancel_runner_status(project_id, current_app)
-    else:
-      current_app.logger.debug("Runner mission is %s will be removing it...", status)
-      recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
+  if status == "canceled":
+    current_app.logger.debug("Runner reserved by project: %d, pipline: %d, is being canceled...", project_id, pipeline_id)
+    KeeperManager.cancel_runner_status(project_id, current_app)
+  if status in ["success", "failed"] or (status == "canceled" and KeeperManager.powered_on == KeeperManager.get_runner_power_status(project_id, current_app)):
+    current_app.logger.debug("Runner mission is %s will be removing it...", status)
+    recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
     current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
     return jsonify(message="VM would not be re-created as the pipeline is same with last one.")
