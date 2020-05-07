@@ -148,7 +148,7 @@ def runner_probe():
     pipeline_task = q.get()
     pipeline_id = pipeline_task.id
     current_app.logger.debug("Got pipeline ID: %d from queue with priority: %d", pipeline_id, pipeline_task.priority)
-    try:
+    try: 
       KeeperManager.get_ip_provision(project_id, current_app)
       current_app.logger.debug("Pipeline: %d will be retried as the project pipeline jobs has been released.", pipeline_id)
       KeeperManager.retry_pipeline(int(project_id), pipeline_id, current_app)
@@ -191,14 +191,18 @@ def prepare_runner():
     current.logger.debug("Requested URL: %s with status code: %d" % (probe_request_url, resp.status_code))
   threading.Thread(target=callback).start()
   if status == "canceled":
-    current_app.logger.debug("Runner reserved by project: %d, pipline: %d, is being canceled...", project_id, pipeline_id)
-    KeeperManager.cancel_runner_status(project_id, current_app)
-  if status in ["success", "failed", "canceled"]:
+    current_app.logger.debug("Runner reserved by project: %d, pipline: %d, is being canceled by user ...", project_id, pipeline_id)
+    KeeperManager.cancel_runner_status(project_id, KeeperManager.canceled_by_user, current_app)
+  if status in ["success", "failed"]:
     current_app.logger.debug("Runner mission is %s will be removing it...", status)
     recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
+    if KeeperManager.powered_on == KeeperManager.get_runner_power_status(project_id, current_app) and KeeperManager.canceled_by_user == KeeperManager.get_runner_cancel_status(project_id, current_app):
+      KeeperManager.release_ip_runner_on_failure(project_id, current_app)
+      return jsonify(message="VM registration would be recycled as it has been canceled by user.")
     current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
     return jsonify(message="VM would not be re-created as the pipeline is same with last one.")
+
   if status not in ["running", "pending"]:
     current_app.logger.debug("Runner would not be prepared as the pipeline is %s.", status) 
     return jsonify(message="Runner would not be prepared as the pipeline is %s" % (status,))
@@ -208,12 +212,18 @@ def prepare_runner():
     KeeperManager.add_to_store(sha, {"runner_ip": ip_provision.ip_address}, current_app)
     KeeperManager.register_ip_runner(ip_provision.id, pipeline_id, project_id, current_app)
   except KeeperException as e:
-    current_app.logger.error(e.message)
+    current_app.logger.error(e.message)    
     KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)
-    if not KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
+    if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
+      if e.code == 412:
+        if KeeperManager.powered_on == KeeperManager.get_runner_power_status(project_id, current_app):
+          recycle_vm(current_app, vm_name, project_id, pipeline_id)
+        return jsonify(message="Runner with pipeline: %d was canceled by user has already released.")
+    else:
       project = KeeperManager.resolve_project_with_priority(username, project_name, current_app)
-      current_app.logger.debug("Pipeline: %d has queued for executing with priority: %d", pipeline_id, project.priority)
+      KeeperManager.cancel_runner_status(project_id, KeeperManager.canceled_for_queue, current_app)
       q.put(PipelineTask(pipeline_id, project.priority))
+      current_app.logger.debug("Pipeline: %d has queued for executing with priority: %d and canceled for queue.", pipeline_id, project.priority)
     return abort(e.code, e.message)
   current_app.logger.debug("Runner with pipeline: %d status is %s, with IP provision ID: %d, IP: %s", pipeline_id, status, ip_provision.id, ip_provision.ip_address)
   try:

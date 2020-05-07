@@ -589,8 +589,8 @@ class KeeperManager:
       ip = ips[random.randint(1, len(ips)) - 1]
       app.logger.debug("Allocated IP: %s, with ID: %s", ip["ip_address"], ip["id"])
       return IPProvision(ip["id"], ip["ip_address"])
-    elif r["is_canceled"] == 1:
-      raise KeeperException(412, "Runner to the project has signaled to cancel, please wait for it to recycle.")
+    elif r["is_canceled"] == KeeperManager.canceled_by_user:
+      raise KeeperException(412, "Runner to the project ID: %s has been signaled to cancel, please wait for it to recycle." % (project_id,))
     raise KeeperException(409, "IP runner already reserved.")
 
   @staticmethod
@@ -631,17 +631,24 @@ class KeeperManager:
         app.logger.debug("Got runner power status is initial...")
         return r["is_power_on"]
 
+  canceled_for_queue = 1
+  canceled_by_user = 2
+
   @staticmethod
-  def cancel_runner_status(project_id, app):
-    db.update_ip_runner_cancel_status(project_id, 1, app)
+  def cancel_runner_status(project_id, cancel_type, app):
+    db.update_ip_runner_cancel_status(project_id, cancel_type, app)
 
   @staticmethod
   def get_runner_cancel_status(project_id, app):
     r = db.get_reserved_runner_by_project(project_id)
-    if r and r["is_canceled"] == 1:
-      app.logger.debug("Runner reserved by project ID: %s has been canceled.", project_id)
-      return True
-    return False
+    if r:
+      canceled_status = r["is_canceled"]
+      if canceled_status == KeeperManager.canceled_for_queue:
+        app.logger.debug("Runner reserved by project ID: %s has been canceled for queue.", project_id)
+      elif canceled_status == KeeperManager.canceled_by_user:
+        app.logger.debug("Runner reserved by project ID: %s has been canceled by user.", project_id)
+      return canceled_status
+    raise KeeperException(405, "Runner reserved by project ID: %s has been canceled by unknown status: %d" % (project_id, canceled_status))
 
   @staticmethod
   def release_ip_runner_on_success(pipeline_id, status, app):
@@ -656,7 +663,7 @@ class KeeperManager:
   
   @staticmethod
   def release_ip_runner_on_failure(project_id, app):
-    app.logger.debug("Releasing runner with project ID: %d on failure.", project_id)
+    app.logger.debug("Releasing runner with project ID: %s on failure.", project_id)
     r = db.get_ip_provision_by_project(project_id)
     if r:
       ip_provision_id = r["ip_provision_id"]
