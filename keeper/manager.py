@@ -631,6 +631,7 @@ class KeeperManager:
         app.logger.debug("Got runner power status is initial...")
         return r["is_power_on"]
 
+  canceled_na = 0
   canceled_for_queue = 1
   canceled_by_user = 2
 
@@ -641,14 +642,14 @@ class KeeperManager:
   @staticmethod
   def get_runner_cancel_status(project_id, app):
     r = db.get_reserved_runner_by_project(project_id)
+    cancel_status = KeeperManager.canceled_na
     if r:
       canceled_status = r["is_canceled"]
       if canceled_status == KeeperManager.canceled_for_queue:
         app.logger.debug("Runner reserved by project ID: %s has been canceled for queue.", project_id)
       elif canceled_status == KeeperManager.canceled_by_user:
         app.logger.debug("Runner reserved by project ID: %s has been canceled by user.", project_id)
-      return canceled_status
-    raise KeeperException(405, "Runner reserved by project ID: %s has been canceled by unknown status: %d" % (project_id, canceled_status))
+    return canceled_status
 
   @staticmethod
   def release_ip_runner_on_success(pipeline_id, status, app):

@@ -197,10 +197,12 @@ def prepare_runner():
     current_app.logger.debug("Runner mission is %s will be removing it...", status)
     recycle_vm(current_app, vm_name, project_id, pipeline_id, status)
   if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
-    if KeeperManager.powered_on == KeeperManager.get_runner_power_status(project_id, current_app) and KeeperManager.canceled_by_user == KeeperManager.get_runner_cancel_status(project_id, current_app):
+    power_status = KeeperManager.get_runner_power_status(project_id, current_app)
+    cancel_type = KeeperManager.get_runner_cancel_status(project_id, current_app)
+    if KeeperManager.powered_on == power_status and KeeperManager.canceled_by_user == cancel_type:
       KeeperManager.release_ip_runner_on_failure(project_id, current_app)
       return jsonify(message="VM registration would be recycled as it has been canceled by user.")
-    current_app.logger.debug("VM would not be re-created as the pipeline is same with last one.")
+    current_app.logger.debug("VM would not be re-created as the pipeline is same with last one or with canceled type: %d", cancel_type)
     return jsonify(message="VM would not be re-created as the pipeline is same with last one.")
 
   if status not in ["running", "pending"]:
