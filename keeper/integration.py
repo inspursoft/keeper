@@ -213,13 +213,11 @@ def prepare_runner():
     KeeperManager.register_ip_runner(ip_provision.id, pipeline_id, project_id, current_app)
   except KeeperException as e:
     current_app.logger.error(e.message)    
+    if e.code == 412 and KeeperManager.powered_on == KeeperManager.get_runner_power_status(project_id, current_app):
+      recycle_vm(current_app, vm_name, project_id, pipeline_id)
+      return jsonify(message="Runner with pipeline: %d was canceled by user has already released.")
     KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)
-    if KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
-      if e.code == 412:
-        if KeeperManager.powered_on == KeeperManager.get_runner_power_status(project_id, current_app):
-          recycle_vm(current_app, vm_name, project_id, pipeline_id)
-        return jsonify(message="Runner with pipeline: %d was canceled by user has already released.")
-    else:
+    if not KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
       project = KeeperManager.resolve_project_with_priority(username, project_name, current_app)
       KeeperManager.cancel_runner_status(project_id, KeeperManager.canceled_for_queue, current_app)
       q.put(PipelineTask(pipeline_id, project.priority))
