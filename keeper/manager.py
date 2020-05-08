@@ -528,9 +528,7 @@ class KeeperManager:
     project = KeeperManager.resolve_user_project(username, project_name, app)
     db.update_runner_token(runner_token, project.project_id, app)
  
-  powering_on = 1
-  powered_on = 2
-
+  
   @staticmethod
   def update_runner_power_status(username, project_name, ip_provision_id, is_power_on, app):
     project = KeeperManager.resolve_user_project(username, project_name, app)
@@ -617,32 +615,39 @@ class KeeperManager:
   def unregister_ip_runner(runner_id, app):
     db.remove_ip_runner(runner_id, app)
 
+  power_on_init = 0
+  powering_on = 1
+  powered_on = 2
+  powered_on_using = 3
+
   @staticmethod
   def get_runner_power_status(project_id, app):
     r = db.get_reserved_runner_by_project(project_id)
+    power_status = KeeperManager.power_on_init
     if r:
-      if r["is_power_on"] == 1:
+      power_status = r["is_power_on"]
+      if KeeperManager.powering_on == power_status:
         app.logger.debug("Got runner status is powering on...")
-        return KeeperManager.powering_on
-      elif r["is_power_on"] == 2:
+      elif KeeperManager.powered_on == power_status:
         app.logger.debug("Got runner status is powered on...")
-        return KeeperManager.powered_on
-      else:
-        app.logger.debug("Got runner power status is initial...")
-        return r["is_power_on"]
+      elif KeeperManager.powered_on_using == power_status:
+        app.logger.debug("Got runner status is powered on and in using...")
+    else:
+      app.logger.debug("Got runner power status is initial...")
+    return power_status
 
   canceled_na = 0
   canceled_for_queue = 1
   canceled_by_user = 2
 
   @staticmethod
-  def cancel_runner_status(project_id, cancel_type, app):
-    db.update_ip_runner_cancel_status(project_id, cancel_type, app)
+  def cancel_runner_status(project_id, pipeline_id, cancel_type, app):
+    db.update_ip_runner_cancel_status(project_id, pipeline_id, cancel_type, app)
 
   @staticmethod
   def get_runner_cancel_status(project_id, app):
     r = db.get_reserved_runner_by_project(project_id)
-    cancel_status = KeeperManager.canceled_na
+    canceled_status = KeeperManager.canceled_na
     if r:
       canceled_status = r["is_canceled"]
       if canceled_status == KeeperManager.canceled_for_queue:

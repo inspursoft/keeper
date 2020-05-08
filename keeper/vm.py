@@ -100,6 +100,7 @@ def vm():
           current.logger.debug(message)
           recycle_vm(current, vm_name, project_id, pipeline_id)
           return jsonify(message=message)
+        KeeperManager.update_runner_power_status(username, project_name, ip_provision_id, KeeperManager.powered_on, current)
         try:
           info = manager.get_vm_info()
           vm = VM(vm_id=info.id, vm_name=vm_name, target="AUTOMATED", keeper_url="N/A")
@@ -108,7 +109,7 @@ def vm():
         except KeeperException as e0:
           current.logger.error("Failed to get runner: %s", e0)
         finally:
-          KeeperManager.update_runner_power_status(username, project_name, ip_provision_id, KeeperManager.powered_on, current)
+          KeeperManager.update_runner_power_status(username, project_name, ip_provision_id, KeeperManager.powered_on_using, current)
       SubTaskUtil.set(current_app, callback).start()
       return jsonify(message="VM: %s has being created." % vm_name)
     except KeeperException as e:

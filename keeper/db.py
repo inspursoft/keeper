@@ -264,8 +264,8 @@ def update_ip_runner(ip_provision_id, runner_id, app):
 def update_ip_runner_power_status(ip_provision_id, project_id, is_power_on, app):
   proxied_execute(app, 'update ip_runner set is_power_on = ? where ip_provision_id = ? and project_id = ?', (is_power_on, ip_provision_id, project_id))
 
-def update_ip_runner_cancel_status(project_id, is_canceled, app):
-  proxied_execute(app, 'update ip_runner set is_canceled = ? where project_id = ?', (is_canceled, project_id))
+def update_ip_runner_cancel_status(project_id, pipeline_id, is_canceled, app):
+  proxied_execute(app, 'update ip_runner set is_canceled = ? where project_id = ? and pipeline_id = ?', (is_canceled, project_id, pipeline_id))
 
 def remove_ip_runner(ip_provision_id, app):
   proxied_execute(app, 'delete from ip_runner where ip_provision_id = ?', (ip_provision_id,))
