@@ -86,3 +86,8 @@ create table store (
 );
 
 ALTER TABLE project ADD priority INTEGER DEFAULT 3;
+
+create table job_log_judgement (
+  rule_name varchar(50) primary key ,
+  rule text
+);

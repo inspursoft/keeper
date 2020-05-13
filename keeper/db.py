@@ -299,6 +299,17 @@ def insert_into_store(category, key, val, app):
 def delete_from_store(category, app):
   proxied_execute(app, 'delete from store where category = ?', (category,))
 
+def get_job_log_judgement(rule_name, app):
+  return get_db().execute('''
+    select rule_name, rule from job_log_judgement where rule_name = ?
+  ''', (rule_name,)).fetchone()
+
+def insert_job_log_judgement(rule_name, rule, app):
+  return proxied_execute(app, 'replace into job_log_judgement (rule_name, rule) values (?, ?)', (rule_name, rule))
+
+def delete_job_log_judgement(rule_name, app):
+  return proxied_execute(app, 'delete from job_log_judgement where rule_name = ?', (rule_name,))
+
 class DBT:
   conn = None
   @classmethod

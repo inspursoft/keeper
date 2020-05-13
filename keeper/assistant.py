@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 import tarfile
 from urllib.parse import urljoin
 import time
+import threading
 
 bp = Blueprint("assistant", __name__, url_prefix="/api/v1")
 
@@ -233,3 +234,82 @@ def resolve_repo_files():
   except KeeperException as e:
     current_app.logger.debug("Failed to retrieve files: %s", e)
     return abort(e.code, e.message)
+
+@bp.route("/jobs/failure", methods=["POST"])
+def resolve_pipeline_failed_jobs():
+  base_username = request.args.get("base_username", None)
+  if not base_username:
+    return abort(400, "Base repo username is required.")
+  base_project_name = request.args.get("base_project_name", None)
+  if not base_project_name:
+    return abort(400, "Base project name is required.")
+  pipeline_project_id = request.args.get("pipeline_project_id", None)
+  if not pipeline_project_id:
+    return abort(400, "Pipeline Project ID is required.")
+  pipeline_id = request.args.get("pipeline_id", None)
+  if not pipeline_id:
+    return abort(400, "Pipeline ID is required.")
+  try:
+    pipeline_logs = KeeperManager.get_pipeline_failed_jobs(int(pipeline_project_id), int(pipeline_id), current_app)
+    matched, assignee_info = KeeperManager.match_job_log_by_judgement(pipeline_logs, current_app)
+    if matched:
+      current_app.logger.debug("No matched with judgement rule for DevOps issue of characters, will open issue to developer as assignee...")
+      open_issue_url = urljoin("http://localhost:5000", url_for("integration.issue_assign", username=base_username, project_name=base_project_name))
+      current = current_app._get_current_object()
+      def callback():
+        issue_title = "Issue for pipeline: %d" % (assignee_info["pipeline_id"],)
+        issue_description = "There was some error occurred when executing pipeline: %d for job: %s that might be caused by your misconfiguration or code." % (assignee_info["pipeline_id"], assignee_info["job_name"])
+        resp = requests.post(open_issue_url, json={"assignee": assignee_info["assignee"], "title": issue_title, "description": issue_description})
+        current.logger.debug("Requested URL: %s with status code: %d, response text: %s" % (open_issue_url, resp.status_code, resp.text))
+      threading.Thread(target=callback).start()
+    return jsonify(message="Successful resolved pipeline failed jobs.")
+  except KeeperException as e:
+    current_app.logger.error("Failed to resolve artifacts: %s", e)
+    return abort(e.code, e.message)
+
+@bp.route("/jobs/judgement", methods=["POST","DELETE"])
+def create_or_update_job_log_judgement():
+  if request.method == "POST":
+    from_file = request.args.get("from_file", None)
+    if from_file:
+      username = request.args.get("username", None)
+      if not username:
+        return abort(400, "Username is required when get judgement from file.")
+      project_name = request.args.get("project_name", None)
+      if not project_name:
+        return abort(400, "Project name is required when get judgement from file.")
+      branch = request.args.get("branch", None)
+      if not branch:
+        branch = "master"
+      try:
+        project = KeeperManager.resolve_project(username, project_name, current_app)
+        config_variables = KeeperManager.resolve_key_value_pairs_from_file(project.project_id, branch, from_file, current_app)
+        KeeperManager.create_job_log_judgement_from_dict(config_variables, current_app)
+        return jsonify(message="Successful config job log judgement from file: %s with project: %s" % (from_file, project.project_name))
+      except KeeperException as e:
+        current_app.logger.error("Failed to resolve job judgement from file: %s", e)
+        return abort(e.code, e.message)
+    else:
+      data = request.get_json()
+      if not data:
+        return abort(400, "Missing request body.")
+      if "rule_name" not in data:
+        return abort(400, "Rule name is required.")
+      if "rule" not in data:
+        data["rule"] = ""
+      try:
+        KeeperManager.create_job_log_judgement(data["rule_name"], data["rule"], current_app)
+        return jsonify(message="Successful maintained job log judgement.")
+      except KeeperException as e:
+        current_app.logger.error("Failed to maintain job log judgement: %s", e)
+        return abort(e.code, e.message)
+  elif request.method == "DELETE":
+    rule_name = request.args.get("rule_name", None)
+    if not rule_name:
+      return abort(400, "Rule name is required.")
+    try:
+      KeeperManager.remove_job_log_judgement(rule_name, current_app)
+      return jsonify(message="Successful removed job log judgement: %s" % (rule_name,))
+    except KeeperException as e:
+      current_app.logger.error("Failed to remove job log judgement: %s with error: %s", rule_name, e)
+      return abort(e.code, e.message)

@@ -130,3 +130,25 @@ class PipelineTask:
 
   def __eq__(self, other):
     return self.priority == other.priority
+
+class PipelineJobLog:
+  __slots__ = "pipeline_id", "stage", "job_name", "job_id", "trace", "username"
+  def __init__(self, pipeline_id, stage, job_name, job_id, trace, username):
+    self.pipeline_id = pipeline_id
+    self.stage = stage
+    self.job_name = job_name
+    self.job_id = job_id
+    self.trace = trace
+    self.username = username
+
+  def __str__(self):
+    return "Got log trace from pipeline ID: %d, stage: %s, job name: %s, job ID: %d for username: %s" % (self.pipeline_id, self.stage, self.job_name, self.job_id, self.username)
+
+class JobLogJudgementRule:
+  __slots__ = "rule_name", "rule"
+  def __init__(self, rule_name, rule):
+    self.rule_name = rule_name
+    self.rule = rule
+
+  def __str__(self):
+    return "Got job log judgement by name: %s with rule: %s" % (self.rule_name, self.rule)

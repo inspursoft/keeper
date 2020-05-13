@@ -152,7 +152,7 @@ def runner_probe():
       KeeperManager.get_ip_provision(project_id, current_app)
       current_app.logger.debug("Pipeline: %d will be retried as the project pipeline jobs has been released.", pipeline_id)
       KeeperManager.retry_pipeline(int(project_id), pipeline_id, current_app)
-    except KeeperException as e:
+    except KeeperException:
       q.put(pipeline_task)
       current_app.logger.debug("Pipeline: %d was hanged up as the project pipeline jobs has been reserved by others.", pipeline_id)
     time.sleep(3)

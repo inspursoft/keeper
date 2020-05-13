@@ -204,7 +204,7 @@ class KeeperManager:
     if method == 'POST':
       resp = requests.post(request_url, headers=default_headers, json=params)
     elif method == 'GET':
-      resp = requests.get(request_url, headers=default_headers)
+      resp = requests.get(request_url, headers=default_headers, params=params)
     elif method == 'PUT':
       resp = requests.put(request_url, headers=default_headers, json=params)
     elif method == 'DELETE':
@@ -820,11 +820,9 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method="DELETE")
 
   @staticmethod
-  def resolve_config_variables(config_project_id, target_project_id, file_path, branch, app):
-    last_variables = KeeperManager.get_config_variables(target_project_id, app)
-    content = KeeperManager.get_repository_raw_file(config_project_id, file_path, branch, app)
-    app.logger.debug("File path: %s", file_path)
-    app.logger.debug("Content: %s", content)
+  def resolve_key_value_pairs_from_file(project_id, branch, file_path, app):
+    content = KeeperManager.get_repository_raw_file(project_id, file_path, branch, app)
+    app.logger.debug("Got key value pairs file path: %s from branch %s with project ID: %d", file_path, branch, project_id)
     current_variables = {}
     for line in content.splitlines():
       if not line.find("=") or line.startswith("#"):
@@ -834,6 +832,12 @@ class KeeperManager:
       if len(parts) < 2:
         continue
       current_variables[parts[0].strip()] = parts[1].strip()
+    return current_variables
+
+  @staticmethod
+  def resolve_config_variables(config_project_id, target_project_id, file_path, branch, app):
+    last_variables = KeeperManager.get_config_variables(target_project_id, app)
+    current_variables = KeeperManager.resolve_key_value_pairs_from_file(config_project_id, branch, file_path, app)
     app.logger.debug("Current config variables: %s", current_variables)
     for current_key in list(current_variables.keys()):
       current_value = current_variables[current_key]
@@ -859,3 +863,68 @@ class KeeperManager:
     commit_message = "%s file: %s" % (action.capitalize(), file_path)
     actions = [{"action": action, "file_path": file_path, "content": content}]
     return KeeperManager.commit_files(project.project_id, branch, commit_message, actions, app)
+
+  @staticmethod
+  def get_pipeline_failed_jobs(project_id, pipeline_id, app):
+    app.logger.debug("Get pipeline: %s for failed jobs log trace with project ID: %d", pipeline_id, project_id)
+    request_url = "%s/projects/%d/pipelines/%d/jobs" % (KeeperManager.get_gitlab_api_url(), project_id, pipeline_id)
+    r = KeeperManager.request_gitlab_api(project_id, request_url, app, method="GET", params={"scope[]": "failed"})
+    failed_pipeline_jobs = []
+    for job in r:
+      stage = job["stage"]
+      name = job["name"]
+      job_id = job["id"]
+      trace = KeeperManager.download_job_log_trace(project_id, job_id, app)
+      user_info = job["user"]["username"]
+      job_log = PipelineJobLog(pipeline_id, stage, name, job_id, trace, user_info)
+      failed_pipeline_jobs.append(job_log)
+    return failed_pipeline_jobs
+
+  @staticmethod
+  def download_job_log_trace(project_id, job_id, app):
+    app.logger.debug("Download from job: %d trace with project ID: %d", job_id, project_id)
+    request_url = "%s/projects/%d/jobs/%d/trace" % (KeeperManager.get_gitlab_api_url(), project_id, job_id)
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method="GET", resp_raw=True)
+
+  @staticmethod
+  def create_job_log_judgement(rule_name, rule, app):
+    db.insert_job_log_judgement(rule_name, rule, app)
+    app.logger.debug("Created job log judgement: %s with rule: %s", rule_name, rule)
+
+  @staticmethod
+  def create_job_log_judgement_from_dict(config_variables, app):
+    for key, val in config_variables.items():
+      KeeperManager.create_job_log_judgement(key, val, app)
+
+  @staticmethod
+  def remove_job_log_judgement(rule_name, app):
+    db.delete_job_log_judgement(rule_name, app)
+    app.logger.debug("Deleted job log judgement: %s", rule_name)
+
+  @staticmethod
+  def get_job_log_judgement(rule_name, app):
+    r = db.get_job_log_judgement(rule_name, app)
+    if not r:
+      raise KeeperException(404, "None of job log judgement rule for name: %s found, create one first." %(rule_name,))
+    return JobLogJudgementRule(r["rule_name"], r["rule"])
+
+  @staticmethod
+  def match_job_log_by_judgement(pipeline_job_logs, app):
+    for job_log in pipeline_job_logs:
+      rule_name = "%s|%s" % (job_log.stage, job_log.job_name)
+      judgement = KeeperManager.get_job_log_judgement(rule_name, app)
+      try:
+        if re.search(judgement.rule, job_log.trace, re.M):
+          app.logger.debug("Bypass for DevOps issue as matched job log by rule: %s with characters: %s", rule_name, judgement.rule)
+          continue # Passed for issue with DevOps.
+        payload = {
+          "assignee": job_log.username,
+          "job_name": job_log.job_name,
+          "pipeline_id": job_log.pipeline_id,
+        }
+        app.logger.debug("Return for user: %s issue as it does not matched job log by reserved judgement.", payload["assignee"])
+        return True, payload  # Return matched flag for openning issue to assignee.
+      except Exception as e:
+        app.logger.error("Failed to match job log by reserved judgement: %s", e)
+        raise KeeperException(400, e)
+    return False, None
