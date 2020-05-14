@@ -152,3 +152,14 @@ class JobLogJudgementRule:
 
   def __str__(self):
     return "Got job log judgement by name: %s with rule: %s" % (self.rule_name, self.rule)
+
+class Evaluation:
+  __slots__ = "category", "standard", "level", "suggestion"
+  def __init__(self, category, standard, level = 1, suggestion = ""):
+    self.category = category
+    self.standard = standard
+    self.level = level
+    self.suggestion = suggestion
+  
+  def __str__(self):
+    return "Got evaluation by category: %s with standard: %s, level: %d, suggestion: %s" % (self.category, self.standard, self.level, self.suggestion)

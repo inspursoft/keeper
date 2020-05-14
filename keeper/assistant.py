@@ -5,7 +5,7 @@ from flask import (
 from keeper.manager import *
 from werkzeug.utils import secure_filename
 import tarfile
-from urllib.parse import urljoin
+from urllib.parse import urljoin, quote
 import time
 import threading
 
@@ -267,49 +267,113 @@ def resolve_pipeline_failed_jobs():
     current_app.logger.error("Failed to resolve artifacts: %s", e)
     return abort(e.code, e.message)
 
-@bp.route("/jobs/judgement", methods=["POST","DELETE"])
+@bp.route("/contents/evaluate", methods=["POST"])
+def evaluate_content():
+  category = request.args.get("category", None)
+  if not category:
+    return abort(400, "Category is required.")
+  username = request.args.get("username", None)
+  if not username:
+    return abort(400, "Username is required.")
+  project_name = request.args.get("project_name", None)
+  if not project_name:
+    return abort(400, "Project name is required.")
+  file_path = request.args.get("file_path", None)
+  if not file_path:
+    return abort(400, "File path is required.")
+  branch = request.args.get("branch", None)
+  if not branch:
+    branch = "master"
+  try:
+    content = KeeperManager.retrieve_files_from_repo(username, project_name, quote(file_path, safe=""), branch, current_app)
+    evaluated, evaluation = KeeperManager.evaluate_content(category, content, current_app)
+    if evaluated:
+      return jsonify(category=evaluation.category, standard=evaluation.standard, level=evaluation.level, suggestion=evaluation.suggestion)
+    return jsonify(message="Evaluation executed but matched no standard by category: %s" % (category,))
+  except KeeperException as e:
+    current_app.logger.error("Failed to evaluate content for file: %s with error: %s", file_path, e)
+    return abort(e.code, e.message)
+
+
+@bp.route("/jobs/judgement", methods=["POST", "DELETE"])
 def create_or_update_job_log_judgement():
+  current = current_app._get_current_object()
+  def batch_save_callback(config_variables):
+    KeeperManager.create_job_log_judgement_from_dict(config_variables, current)
+  def save_callback():
+    data = request.get_json()
+    if not data:
+      return abort(400, "Missing request body.")
+    if "rule_name" not in data:
+      return abort(400, "Rule name is required.")
+    if "rule" not in data:
+      data["rule"] = ""
+    KeeperManager.create_job_log_judgement(data["rule_name"], data["rule"], current)
+  def remove_callback():
+    rule_name = request.args.get("rule_name", None)
+    if not rule_name:
+      return abort(400, "Rule name is required.")
+    KeeperManager.remove_job_log_judgement(rule_name, current)
+  return create_or_update_action(request, current, "job log judgement", batch_save_callback, save_callback, remove_callback)
+
+@bp.route("/evaluations", methods=["POST", "DELETE"])
+def create_or_update_evaluation():
+  current = current_app._get_current_object()
+  def batch_save_callback(config_variables):
+    KeeperManager.create_evaluation_from_dict(config_variables, current)
+  def save_callback():
+    data = request.get_json()
+    if not data:
+      return abort(400, "Missing request body.")
+    if "category" not in data:
+      return abort(400, "Category is required.")
+    if "standard" not in data:
+      return abort(400, "Standard is required.")
+    if "level" not in data:
+      data["level"] = 1
+    if "suggestion" not in data:
+      data["suggestion"] = ""
+    evaluation = Evaluation(data["category"], data["standard"], data["level"], data["suggestion"])
+    KeeperManager.create_evaluation(evaluation, current)
+  def remove_callback():
+    category = request.args.get("category", None)
+    if not category:
+      return abort(400, "Category is required.")
+    KeeperManager.remove_evaluation(category, current)
+  return create_or_update_action(request, current, "evaluation", batch_save_callback, save_callback, remove_callback)
+
+def create_or_update_action(request, current, identity, batch_save_callback, save_callback, remove_callback):
   if request.method == "POST":
     from_file = request.args.get("from_file", None)
     if from_file:
       username = request.args.get("username", None)
       if not username:
-        return abort(400, "Username is required when get judgement from file.")
+        return abort(400, "Username is required when get %s from file." % (identity,))
       project_name = request.args.get("project_name", None)
       if not project_name:
-        return abort(400, "Project name is required when get judgement from file.")
+        return abort(400, "Project name is required when get %s from file." % (identity,))
       branch = request.args.get("branch", None)
       if not branch:
         branch = "master"
       try:
-        project = KeeperManager.resolve_project(username, project_name, current_app)
-        config_variables = KeeperManager.resolve_key_value_pairs_from_file(project.project_id, branch, from_file, current_app)
-        KeeperManager.create_job_log_judgement_from_dict(config_variables, current_app)
-        return jsonify(message="Successful config job log judgement from file: %s with project: %s" % (from_file, project.project_name))
+        project = KeeperManager.resolve_project(username, project_name, current)
+        config_variables = KeeperManager.resolve_key_value_pairs_from_file(project.project_id, branch, from_file, current)
+        batch_save_callback(config_variables)
+        return jsonify(message="Successful config %s from file: %s with project: %s" % (identity, from_file, project.project_name))
       except KeeperException as e:
-        current_app.logger.error("Failed to resolve job judgement from file: %s", e)
+        current.logger.error("Failed to resolve %s from file: %s", identity, e)
         return abort(e.code, e.message)
-    else:
-      data = request.get_json()
-      if not data:
-        return abort(400, "Missing request body.")
-      if "rule_name" not in data:
-        return abort(400, "Rule name is required.")
-      if "rule" not in data:
-        data["rule"] = ""
+    else:     
       try:
-        KeeperManager.create_job_log_judgement(data["rule_name"], data["rule"], current_app)
-        return jsonify(message="Successful maintained job log judgement.")
+        save_callback()
+        return jsonify(message="Successful maintained %s." % (identity,))
       except KeeperException as e:
-        current_app.logger.error("Failed to maintain job log judgement: %s", e)
+        current.logger.error("Failed to maintain %s with error: %s", identity, e)
         return abort(e.code, e.message)
   elif request.method == "DELETE":
-    rule_name = request.args.get("rule_name", None)
-    if not rule_name:
-      return abort(400, "Rule name is required.")
     try:
-      KeeperManager.remove_job_log_judgement(rule_name, current_app)
-      return jsonify(message="Successful removed job log judgement: %s" % (rule_name,))
+      remove_callback()
+      return jsonify(message="Successful removed %s" % (identity,))
     except KeeperException as e:
-      current_app.logger.error("Failed to remove job log judgement: %s with error: %s", rule_name, e)
+      current.logger.error("Failed to remove %s with error: %s", identity, e)
       return abort(e.code, e.message)

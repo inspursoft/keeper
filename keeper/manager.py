@@ -914,7 +914,8 @@ class KeeperManager:
       rule_name = "%s|%s" % (job_log.stage, job_log.job_name)
       judgement = KeeperManager.get_job_log_judgement(rule_name, app)
       try:
-        if re.search(judgement.rule, job_log.trace, re.M):
+        p = re.compile(judgement.rule, re.M)
+        if re.search(p, job_log.trace):
           app.logger.debug("Bypass for DevOps issue as matched job log by rule: %s with characters: %s", rule_name, judgement.rule)
           continue # Passed for issue with DevOps.
         payload = {
@@ -927,4 +928,45 @@ class KeeperManager:
       except Exception as e:
         app.logger.error("Failed to match job log by reserved judgement: %s", e)
         raise KeeperException(400, e)
+    return False, None
+
+  @staticmethod
+  def get_evaluation(category, app):
+    r = db.get_evaluation(category, app)
+    if not r:
+      raise KeeperException(404, "None of evaluation for category: %s", category)
+    return Evaluation(r["category"], r["standard"], r["level"], r["suggestion"])
+
+  @staticmethod
+  def create_evaluation_from_dict(config_variables, app):
+    for key, val in config_variables.items():
+      parts = val.split("#")
+      if len(parts) == 3:
+        try:
+          evaluation = Evaluation(key, parts[0], int(parts[1]), parts[2])
+          KeeperManager.create_evaluation(evaluation, app)
+        except Exception as e:
+          app.log.error("Failed parse items into evaluation: %s", e)
+      else:
+        app.logger.debug("Failed to resolve content to evaluation: %s", val)
+
+  @staticmethod
+  def create_evaluation(evaluation, app):
+    db.insert_evaluation(evaluation.category, evaluation.standard, evaluation.level, evaluation.suggestion, app)
+    app.logger.debug("Successful created evaluation: %s", evaluation)
+
+  @staticmethod
+  def remove_evaluation(category, app):
+    db.delete_evaluation(category, app)
+    app.logger.debug("Successful removed evaluation by category: %s", category)
+
+  @staticmethod
+  def evaluate_content(category, content, app):
+    try:
+      evaluation = KeeperManager.get_evaluation(category, app)
+      p = re.compile(evaluation.standard, re.M)
+      if re.search(p, content):
+        return True, evaluation
+    except Exception as e:
+      app.logger.error("Failed to evaluate content with error: %s", e)
     return False, None

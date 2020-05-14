@@ -91,3 +91,10 @@ create table job_log_judgement (
   rule_name varchar(50) primary key ,
   rule text
 );
+
+create table evaluation (
+  category varchar(50) primary key,
+  standard text not null,
+  level integer not null default 1,
+  suggestion text
+);
