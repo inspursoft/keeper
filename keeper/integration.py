@@ -91,10 +91,11 @@ def issue_open_peer():
     current_app.logger.debug(message)
     return message
 
-  if title.find("Follow-up from") >= 0:
+  if title.find("Follow-up from") >= 0 or title.find("Issue for pipeline:") >= 0:
     message = "Bypass for automatic generated issue with title: %s" % (title,)
     current_app.logger.debug(message)
     return message
+  
   branch_name = KeeperManager.resolve_branch_name("{}-{}".format(issue_iid, issue_title), current_app)
   current_app.logger.debug("Create branch: %s with ref: %s", branch_name, ref)
   try:
