@@ -1,5 +1,5 @@
 from flask import (
-  Blueprint, abort, request, current_app, jsonify, url_for
+  Blueprint, abort, request, current_app, jsonify, url_for, make_response
 )
 
 from keeper.manager import *
@@ -288,7 +288,10 @@ def evaluate_content():
     content = KeeperManager.retrieve_files_from_repo(username, project_name, quote(file_path, safe=""), branch, current_app)
     evaluated, evaluation = KeeperManager.evaluate_content(category, content, current_app)
     if evaluated:
-      return jsonify(category=evaluation.category, standard=evaluation.standard, level=evaluation.level, suggestion=evaluation.suggestion)
+      level = evaluation.level
+      if level < 3:
+        return jsonify(category=evaluation.category, standard=evaluation.standard, level=evaluation.level, suggestion=evaluation.suggestion)
+      return abort(412, "Evaluated with level: %d that should have action taken." % (level))
     return jsonify(message="Evaluation executed but matched no standard by category: %s" % (category,))
   except KeeperException as e:
     current_app.logger.error("Failed to evaluate content for file: %s with error: %s", file_path, e)
