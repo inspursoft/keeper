@@ -251,17 +251,28 @@ def resolve_pipeline_failed_jobs():
     return abort(400, "Pipeline ID is required.")
   try:
     pipeline_logs = KeeperManager.get_pipeline_failed_jobs(int(pipeline_project_id), int(pipeline_id), current_app)
+    issue_label = "devops"
     matched, assignee_info = KeeperManager.match_job_log_by_judgement(pipeline_logs, current_app)
     if matched:
+      issue_label = "issue"
+      assignee_info["title"] = "Issue for pipeline: %d" % (assignee_info["pipeline_id"],)
+      assignee_info["description"] = "There was some error occurred when executing pipeline: %d for job: %s that might be caused by your misconfiguration or code." % (assignee_info["pipeline_id"], assignee_info["job_name"])
       current_app.logger.debug("No matched with judgement rule for DevOps issue of characters, will open issue to developer as assignee...")
-      open_issue_url = urljoin("http://localhost:5000", url_for("integration.issue_assign", username=base_username, project_name=base_project_name))
-      current = current_app._get_current_object()
-      def callback():
-        issue_title = "Issue for pipeline: %d" % (assignee_info["pipeline_id"],)
-        issue_description = "There was some error occurred when executing pipeline: %d for job: %s that might be caused by your misconfiguration or code." % (assignee_info["pipeline_id"], assignee_info["job_name"])
-        resp = requests.post(open_issue_url, json={"assignee": assignee_info["assignee"], "title": issue_title, "description": issue_description})
-        current.logger.debug("Requested URL: %s with status code: %d, response text: %s" % (open_issue_url, resp.status_code, resp.text))
-      threading.Thread(target=callback).start()
+    else:
+      assignee_info = {
+        "assignee": base_username,
+        "pipeline_id": pipeline_id,
+        "title": "DevOps issue for pipeline %d" % (int(pipeline_id),),
+        "description": "Pipeline was failed caused by DevOps issue.",
+      }
+    open_issue_url = urljoin("http://localhost:5000", url_for("integration.issue_assign", username=base_username, project_name=base_project_name))
+    current = current_app._get_current_object()
+    def callback():
+      issue_title = assignee_info["title"]
+      issue_description = assignee_info["description"]
+      resp = requests.post(open_issue_url, json={"assignee": assignee_info["assignee"], "title": issue_title, "description": issue_description, "label": issue_label})
+      current.logger.debug("Requested URL: %s with status code: %d, response text: %s" % (open_issue_url, resp.status_code, resp.text))
+    threading.Thread(target=callback).start()
     return jsonify(message="Successful resolved pipeline failed jobs.")
   except KeeperException as e:
     current_app.logger.error("Failed to resolve artifacts: %s", e)
