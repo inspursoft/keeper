@@ -220,7 +220,7 @@ def prepare_runner():
       recycle_vm(current_app, vm_name, project_id, pipeline_id)
       return jsonify(message="Runner with pipeline: %d was canceled by user has already released.")
     KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)
-    if not KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app):
+    if not (KeeperManager.get_ip_provision_by_pipeline(pipeline_id, current_app) and KeeperManager.power_on_init):
       project = KeeperManager.resolve_project_with_priority(username, project_name, current_app)
       KeeperManager.cancel_runner_status(project_id, pipeline_id, KeeperManager.canceled_for_queue, current_app)
       q.put(PipelineTask(pipeline_id, project.priority))
