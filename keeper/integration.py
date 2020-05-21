@@ -154,13 +154,9 @@ def runner_probe():
       current_app.logger.debug("Pipeline: %d will be retried as the project pipeline jobs has been released.", pipeline_id)
       KeeperManager.retry_pipeline(int(project_id), pipeline_id, current_app)
     except KeeperException as e:
-      KeeperManager.cancel_pipeline(int(project_id), pipeline_id, current_app)
       q.put(pipeline_task)
       current_app.logger.debug("Pipeline: %d was hanged up as the project pipeline jobs has been reserved by others.", pipeline_id)
-      power_status = KeeperManager.get_runner_power_status(project_id, current_app)
-      if e.code == 412 and KeeperManager.powering_on == power_status:
-        KeeperManager.release_ip_runner_on_success(pipeline_id, status, current_app)
-      time.sleep(8)
+    time.sleep(8)
   message = "None of queued pipelines."
   current_app.logger.debug(message)
   return message
