@@ -157,7 +157,7 @@ def runner_probe():
       power_status = KeeperManager.get_runner_power_status(project_id, current_app)
       if e.code == 412 and power_status in [KeeperManager.powered_on, KeeperManager.powered_on_using]:
         recycle_vm(current_app, vm_name, project_id, pipeline_id)
-      KeeperManager.cancel_pipeline(project_id, pipeline_id, current_app)
+      KeeperManager.cancel_pipeline(int(project_id), pipeline_id, current_app)
       q.put(pipeline_task)
       current_app.logger.debug("Pipeline: %d was hanged up as the project pipeline jobs has been reserved by others.", pipeline_id)
     time.sleep(8)
@@ -242,7 +242,7 @@ def prepare_runner():
     request_url = urljoin("http://localhost:5000", url_for("vm.vm", name=vm_name, username=username, project_id=project_id, project_name=project_name, status=status))
     resp = requests.post(request_url, json=vm_conf, params={"ip_provision_id": ip_provision.id, "pipeline_id": pipeline_id})
     KeeperManager.update_runner_power_status(username, project_name, ip_provision.id, KeeperManager.powering_on, current_app)
-    message = "Requested URL: %s with status code: %d, update target VM power status as powered on." % (request_url, resp.status_code)
+    message = "Requested URL: %s with status code: %d, update target VM power status as powering on." % (request_url, resp.status_code)
     current_app.logger.debug(message)
     return message
   except Exception as e:
