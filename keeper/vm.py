@@ -10,10 +10,6 @@ from keeper.model import VM, Snapshot
 bp = Blueprint('vm', __name__, url_prefix="/api/v1")
 
 def recycle_vm(current_app, vm_name, project_id, pipeline_id, status="N/A"):
-  power_status = KeeperManager.get_runner_power_status(project_id, current_app)
-  if power_status in [KeeperManager.powering_on]:
-    current_app.logger.debug("Runner for project: %s is powering on, skipping for recyeling...", project_id)
-    return
   try:
     KeeperManager(current_app, vm_name).force_delete_vm()
   except KeeperException as e:
