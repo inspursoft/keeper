@@ -12,7 +12,7 @@ bp = Blueprint('vm', __name__, url_prefix="/api/v1")
 def recycle_vm(current_app, vm_name, project_id, pipeline_id, status="N/A"):
   try:
     power_status = KeeperManager.get_runner_power_status(project_id, current_app)
-    if power_status in [KeeperManager.power_on_init, KeeperManager.powering_on]:
+    if power_status in [KeeperManager.powering_on]:
       current_app.logger.debug("Runner for project: %s is powering on, skipping for recyeling...", project_id)
       return
     KeeperManager(current_app, vm_name).force_delete_vm()
