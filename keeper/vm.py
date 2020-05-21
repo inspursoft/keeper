@@ -10,11 +10,11 @@ from keeper.model import VM, Snapshot
 bp = Blueprint('vm', __name__, url_prefix="/api/v1")
 
 def recycle_vm(current_app, vm_name, project_id, pipeline_id, status="N/A"):
+  power_status = KeeperManager.get_runner_power_status(project_id, current_app)
+  if power_status in [KeeperManager.powering_on]:
+    current_app.logger.debug("Runner for project: %s is powering on, skipping for recyeling...", project_id)
+    return
   try:
-    power_status = KeeperManager.get_runner_power_status(project_id, current_app)
-    if power_status in [KeeperManager.powering_on]:
-      current_app.logger.debug("Runner for project: %s is powering on, skipping for recyeling...", project_id)
-      return
     KeeperManager(current_app, vm_name).force_delete_vm()
   except KeeperException as e:
     current_app.logger.error(e.message)
@@ -99,7 +99,7 @@ def vm():
         current.logger.debug(manager.create_vm())
         power_status = KeeperManager.get_runner_power_status(project_id, current)
         cancel_type = KeeperManager.get_runner_cancel_status(project_id, current)
-        if KeeperManager.canceled_by_user == cancel_type and KeeperManager.powering_on == power_status:
+        if KeeperManager.canceled_by_user == cancel_type and power_status in [KeeperManager.powered_on, KeeperManager.powered_on_using]:
           message = "VM: %s would be recycled as it has been signaled to cancel by user." % (vm_name,)
           current.logger.debug(message)
           recycle_vm(current, vm_name, project_id, pipeline_id)

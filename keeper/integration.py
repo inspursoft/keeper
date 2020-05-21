@@ -155,8 +155,7 @@ def runner_probe():
       KeeperManager.retry_pipeline(int(project_id), pipeline_id, current_app)
     except KeeperException as e:
       power_status = KeeperManager.get_runner_power_status(project_id, current_app)
-      if e.code == 412 and power_status in [KeeperManager.powering_on]:
-        KeeperManager.cancel_runner_status(project_id, pipeline_id, KeeperManager.canceled_for_queue, current_app)
+      if e.code == 412 and power_status in [KeeperManager.powered_on, KeeperManager.powered_on_using]:
         recycle_vm(current_app, vm_name, project_id, pipeline_id)
       q.put(pipeline_task)
       current_app.logger.debug("Pipeline: %d was hanged up as the project pipeline jobs has been reserved by others.", pipeline_id)
