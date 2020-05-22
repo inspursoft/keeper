@@ -376,7 +376,7 @@ def tag_release():
   if checkout_sha is None:
     current_app.logger.debug("Bypass for none of checkout SHA or ref.")
     return "Bypass for none of checkout SHA or ref."
-  project_name = project["name"]
+  project_name = project["path_with_namespace"]
   KeeperManager.add_to_store(checkout_sha, {"repo_version": "%s-%s" %(project_name, version)}, current_app)
   def request_with_action(action):
     current_app.logger.debug("Version info: %s", version_info)
