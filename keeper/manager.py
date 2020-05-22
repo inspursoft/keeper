@@ -819,7 +819,7 @@ class KeeperManager:
   @staticmethod
   def create_new_file_to_repository(project_id, branch, username, email, file_path, content, app):
     app.logger.debug("Create file %s to the repository with project ID: %s", file_path, project_id)
-    request_url = "%s/projects/%d/repository/files/%s" % (KeeperManager.get_gitlab_api_url(), project_id, file_path)
+    request_url = "%s/projects/%d/repository/files/%s" % (KeeperManager.get_gitlab_api_url(), project_id, parse.quote(file_path, safe=""))
     message = "Add file: %s" % (file_path,)
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method="POST", params={"branch": branch, "author_name": username, "author_email": email, "content": content, "commit_message": message})
 

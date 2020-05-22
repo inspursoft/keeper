@@ -152,7 +152,7 @@ def release(action):
     actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app, project_name, version)})
     KeeperManager.commit_files(project_id, version_info, "Commit files to release", actions, current_app)
     if action == "create":
-      history_file_path = quote("history/release-{}.md".format(version), safe="")
+      history_file_path = "history/release-{}.md".format(version)
       email = "%s@inspur.com" % (operator,)
       KeeperManager.create_new_file_to_repository(project_id, release_branch, operator, email, history_file_path, KeeperManager.resolve_action_from_store(category, ".md", current_app), current_app)
     message = "Successful released to the repo: %s with branch: %s" % (release_repo, version_info)
@@ -241,12 +241,10 @@ def resolve_repo_files():
 
 @bp.route("/jobs/failure", methods=["POST"])
 def resolve_pipeline_failed_jobs():
-  base_username = request.args.get("base_username", None)
-  if not base_username:
-    return abort(400, "Base repo username is required.")
   base_project_name = request.args.get("base_project_name", None)
   if not base_project_name:
     return abort(400, "Base project name is required.")
+  base_username = base_project_name[:base_project_name.index("/")]
   pipeline_project_id = request.args.get("pipeline_project_id", None)
   if not pipeline_project_id:
     return abort(400, "Pipeline Project ID is required.")
@@ -264,7 +262,7 @@ def resolve_pipeline_failed_jobs():
       current_app.logger.debug("No matched with judgement rule for DevOps issue of characters, will open issue to developer as assignee...")
     else:
       assignee_info = {
-        "assignee": base_username,
+        "assignee": [base_username],
         "pipeline_id": pipeline_id,
         "title": "DevOps issue for pipeline %d" % (int(pipeline_id),),
         "description": "Pipeline was failed caused by DevOps issue.",
