@@ -262,7 +262,7 @@ def resolve_pipeline_failed_jobs():
       current_app.logger.debug("No matched with judgement rule for DevOps issue of characters, will open issue to developer as assignee...")
     else:
       assignee_info = {
-        "assignee": [base_username],
+        "assignee": base_username,
         "pipeline_id": pipeline_id,
         "title": "DevOps issue for pipeline %d" % (int(pipeline_id),),
         "description": "Pipeline was failed caused by DevOps issue.",
