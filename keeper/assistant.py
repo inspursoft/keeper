@@ -152,7 +152,7 @@ def release(action):
     actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app, project_name, version)})
     KeeperManager.commit_files(project_id, version_info, "Commit files to release", actions, current_app)
     if action == "create":
-      history_file_path = "history/release-{}.md".format(version)
+      history_file_path = quote("history/release-{}.md".format(version), safe="")
       email = "%s@inspur.com" % (operator,)
       KeeperManager.create_new_file_to_repository(project_id, release_branch, operator, email, history_file_path, KeeperManager.resolve_action_from_store(category, ".md", current_app), current_app)
     message = "Successful released to the repo: %s with branch: %s" % (release_repo, version_info)
