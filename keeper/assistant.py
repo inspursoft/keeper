@@ -157,7 +157,7 @@ def release(action):
     current_app.logger.debug(message)
     return message
   except KeeperException as ke:
-    message = "Failed to commit files to the repository: %s" % (release_repo,)
+    message = "Failed to commit files to the repository: %s, with error: %s" % (release_repo, ke)
     current_app.logger.error(message)
     return abort(400, message)
   return message
