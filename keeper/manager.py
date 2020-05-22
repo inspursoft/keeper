@@ -270,17 +270,20 @@ class KeeperManager:
   def resolve_action_from_store(category, file_type, app, project_name=None, version_info=None):
     store = KeeperManager.get_from_store(category, app)
     contents = ""
-    if file_type == ".sh":
+    if file_type == ".md":
+      contents = "# Release info\n"
+      contents += "|Item|Value|\n"
+      contents += "|-|-|\n"
+    elif file_type == ".sh":
       contents = "#!/bin/bash\n"
     for key in store:
       if file_type == ".md":
-        contents += "*" + " " + key + ":" + store[key]
+        contents += "|" + key + "|" + store[key] + "|\n"
       elif file_type == ".sh":
-        contents += key + "=" + '"{}"'.format(store[key])
-      contents += "\n"
+        contents += key + "=" + '"{}"'.format(store[key]) + "\n"
     if file_type == ".sh":
       versions = KeeperManager.get_versions_by_project_name(project_name, app)
-      contents += KeeperManager.resolve_db_migration_command(version_info, versions, app)
+      # contents += KeeperManager.resolve_db_migration_command(version_info, versions, app)
     app.logger.debug("Generated contents with file type: %s, content: %s", file_type, contents)
     return contents
 

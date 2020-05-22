@@ -270,7 +270,7 @@ def resolve_pipeline_failed_jobs():
     def callback():
       issue_title = assignee_info["title"]
       issue_description = assignee_info["description"]
-      resp = requests.post(open_issue_url, json={"assignee": assignee_info["assignee"], "title": issue_title, "description": issue_description, "label": issue_label})
+      resp = requests.post(open_issue_url, json={"assignee": assignee_info["assignee"], "title": issue_title, "description": issue_description, "label": ",".join([issue_label, "todo"])})
       current.logger.debug("Requested URL: %s with status code: %d, response text: %s" % (open_issue_url, resp.status_code, resp.text))
     threading.Thread(target=callback).start()
     return jsonify(message="Successful resolved pipeline failed jobs.")
