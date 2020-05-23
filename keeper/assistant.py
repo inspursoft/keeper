@@ -151,10 +151,9 @@ def release(action):
     md_content = KeeperManager.resolve_action_from_store(category, ".md", current_app, project_name, version)
     actions.append({"action": action, "file_path": "install.md", "content": md_content})
     actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app, project_name, version)})
-    if action == "create":
-      email = "%s@inspur.com" %(operator,)
-      history_file_path = "history/release-{}.md".format(version,)
-      KeeperManager.manipulate_file_to_repository(action, project_id, version_info, operator, email, history_file_path, md_content, current_app)
+    email = "%s@inspur.com" %(operator,)
+    history_file_path = "history/release-{}.md".format(version,)
+    KeeperManager.manipulate_file_to_repository(action, project_id, version_info, operator, email, history_file_path, md_content, current_app)
     KeeperManager.commit_files(project_id, version_info, "Commit files about release: %s" %(version_info,), actions, current_app)
     return "Successful released version: %s to project: %s with action: %s" %(version, project_name, action)
   except KeeperException as ke:
