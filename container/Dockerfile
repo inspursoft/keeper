@@ -7,7 +7,7 @@ COPY setup.py /keeper/setup.py
 COPY keeper /keeper/keeper
 
 WORKDIR /keeper
-RUN pip install -e .
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com -e .
 
 WORKDIR /
 VOLUME [ "/keeper/instance" ]
