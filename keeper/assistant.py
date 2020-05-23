@@ -154,7 +154,7 @@ def release(action):
     if action == "create":
       history_file_path = "history/release-{}.md".format(version)
       email = "%s@inspur.com" % (operator,)
-      KeeperManager.create_new_file_to_repository(project_id, release_branch, operator, email, history_file_path, KeeperManager.resolve_action_from_store(category, ".md", current_app), current_app)
+      KeeperManager.create_new_file_to_repository(project_id, release_branch, operator, email, history_file_path, KeeperManager.resolve_action_from_store(category, ".md", current_app, project_name, version), current_app)
     message = "Successful released to the repo: %s with branch: %s" % (release_repo, version_info)
     current_app.logger.debug(message)
     return message
