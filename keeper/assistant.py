@@ -244,7 +244,10 @@ def resolve_pipeline_failed_jobs():
   base_project_name = request.args.get("base_project_name", None)
   if not base_project_name:
     return abort(400, "Base project name is required.")
+  if base_project_name.find("/") == -1:
+    return abort(400, "Illegal format of base project name: %s", base_project_name)
   base_username = base_project_name[:base_project_name.index("/")]
+  current_app.logger.debug("Resolve base user name: %s from project name: %s", base_username, base_project_name)
   pipeline_project_id = request.args.get("pipeline_project_id", None)
   if not pipeline_project_id:
     return abort(400, "Pipeline Project ID is required.")
