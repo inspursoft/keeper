@@ -148,7 +148,7 @@ def release(action):
     current_app.logger.error(ke)
   try:
     actions = []
-    actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app)})
+    actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app, project_name, version)})
     actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app, project_name, version)})
     KeeperManager.commit_files(project_id, version_info, "Commit files to release", actions, current_app)
     if action == "create":
