@@ -277,16 +277,14 @@ class KeeperManager:
     elif file_type == ".sh":
       contents = "#!/bin/bash\n"
     for key in store:
-      val = store[key]
       if file_type == ".md":
-        if val and val.lower().find("version") >= 0:
+        if key.lower().find("version") >= 0:
           continue
-        contents += "|" + key + "|" + val + "|\n"
+        contents += "|" + key + "|" + store[key] + "|\n"
       elif file_type == ".sh":
-        contents += key + "=" + '"{}"'.format(val) + "\n"
+        contents += key + "=" + '"{}"'.format(store[key]) + "\n"
     if file_type == ".sh":
       versions = KeeperManager.get_versions_by_project_name(project_name, app)
-      # contents += KeeperManager.resolve_db_migration_command(version_info, versions, app)
     app.logger.debug("Generated contents with file type: %s, content: %s", file_type, contents)
     return contents
 
@@ -820,11 +818,14 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method="GET", resp_raw=True)
 
   @staticmethod
-  def create_new_file_to_repository(project_id, branch, username, email, file_path, content, app):
-    app.logger.debug("Create file %s to the repository with project ID: %s", file_path, project_id)
+  def manipulate_file_to_repository(action, project_id, branch, username, email, file_path, content, app):
+    app.logger.debug("Manipulate file %s to the repository for %s with project ID: %s", file_path, action, project_id)
     request_url = "%s/projects/%d/repository/files/%s" % (KeeperManager.get_gitlab_api_url(), project_id, parse.quote(file_path, safe=""))
-    message = "Add file: %s" % (file_path,)
-    return KeeperManager.request_gitlab_api(project_id, request_url, app, method="POST", params={"branch": branch, "author_name": username, "author_email": email, "content": content, "commit_message": message})
+    message = "Add or update file: %s" % (file_path,)
+    target_method = "POST"
+    if action == "update":
+      target_method = "PUT"
+    return KeeperManager.request_gitlab_api(project_id, request_url, app, method=target_method, params={"branch": branch, "author_name": username, "author_email": email, "content": content, "commit_message": message})
 
   @staticmethod
   def delete_config_variable(project_id, key, app):
