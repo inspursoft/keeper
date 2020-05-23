@@ -282,7 +282,7 @@ def update_ip_provision_by_id(ip_provision_id, is_allocated, app):
 
 def get_from_store(category, app):
   return get_db().execute('''
-    select item_key, item_val from store where category = ?
+    select item_key, item_val from store where category = ? order by item_key desc;
   ''', (category,)).fetchall()
 
 def get_from_store_by_key(category, key, app):

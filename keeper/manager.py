@@ -271,7 +271,7 @@ class KeeperManager:
     store = KeeperManager.get_from_store(category, app)
     contents = ""
     if file_type == ".md":
-      contents = "# Release info\n"
+      contents = "# Project: %s release info\n" % (project_name,)
       contents += "|Item|Value|\n"
       contents += "|-|-|\n"
     elif file_type == ".sh":
