@@ -818,16 +818,6 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(project_id, request_url, app, method="GET", resp_raw=True)
 
   @staticmethod
-  def manipulate_file_to_repository(action, project_id, branch, username, email, file_path, content, app):
-    app.logger.debug("Manipulate file %s to the repository for %s with project ID: %s", file_path, action, project_id)
-    request_url = "%s/projects/%d/repository/files/%s" % (KeeperManager.get_gitlab_api_url(), project_id, parse.quote(file_path, safe=""))
-    message = "Add or update file: %s" % (file_path,)
-    target_method = "POST"
-    if action == "update":
-      target_method = "PUT"
-    return KeeperManager.request_gitlab_api(project_id, request_url, app, method=target_method, params={"branch": branch, "author_name": username, "author_email": email, "content": content, "commit_message": message})
-
-  @staticmethod
   def delete_config_variable(project_id, key, app):
     app.logger.debug("Delete config variable - key: %s with project ID: %s", key, project_id)
     request_url = "%s/projects/%d/variables/%s" % (KeeperManager.get_gitlab_api_url(), project_id, key)

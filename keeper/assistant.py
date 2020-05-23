@@ -146,26 +146,17 @@ def release(action):
     KeeperManager.create_branch(project_id, version_info, release_branch, current_app)
   except KeeperException as ke:
     current_app.logger.error(ke)
-  current = current_app._get_current_object()
-  def commit_history(current):
-    history_file_path = "history/release-{}.md".format(version)
-    email = "%s@inspur.com" % (operator,)
-    KeeperManager.manipulate_file_to_repository(action, project_id, release_branch, operator, email, history_file_path, KeeperManager.resolve_action_from_store(category, ".md", current, project_name, version), current)
-    message = "Successful released to the repo: %s with branch: %s with action: %s" % (release_repo, version_info, action)
-    current_app.logger.debug(message)
-    return message
   try:
     actions = []
     actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app, project_name, version)})
     actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app, project_name, version)})
-    KeeperManager.commit_files(project_id, version_info, "Commit files to release", actions, current_app)
-    return commit_history(current)
+    history_file_path = quote("history/release-{}.md".format(version), safe="")
+    actions.append({"action": action, "file_path": history_file_path, "content": KeeperManager.resolve_action_from_store(category, ".md", current_app, project_name, version)})
+    return "Successful released version: %s to project: %s with action: %s" %(version, project_name, action)
   except KeeperException as ke:
     message = "Failed to commit files to the repository: %s, with error: %s" % (release_repo, ke)
     current_app.logger.error(message)
-    commit_history(current)
     return abort(400, message)
-  return message
 
 @bp.route("/variables", methods=["POST"])
 def config_variables():
