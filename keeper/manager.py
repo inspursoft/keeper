@@ -277,10 +277,13 @@ class KeeperManager:
     elif file_type == ".sh":
       contents = "#!/bin/bash\n"
     for key in store:
+      val = store[key]
       if file_type == ".md":
-        contents += "|" + key + "|" + store[key] + "|\n"
+        if val and val.lower().find("version") >= 0:
+          continue
+        contents += "|" + key + "|" + val + "|\n"
       elif file_type == ".sh":
-        contents += key + "=" + '"{}"'.format(store[key]) + "\n"
+        contents += key + "=" + '"{}"'.format(val) + "\n"
     if file_type == ".sh":
       versions = KeeperManager.get_versions_by_project_name(project_name, app)
       # contents += KeeperManager.resolve_db_migration_command(version_info, versions, app)
