@@ -150,7 +150,7 @@ def release(action):
     actions = []
     actions.append({"action": action, "file_path": "install.md", "content": KeeperManager.resolve_action_from_store(category, ".md", current_app, project_name, version)})
     actions.append({"action": action, "file_path": "install.sh", "content": KeeperManager.resolve_action_from_store(category, ".sh", current_app, project_name, version)})
-    history_file_path = quote("history/release-{}.md".format(version), safe="")
+    history_file_path = "history/release-{}.md".format(version)
     actions.append({"action": action, "file_path": history_file_path, "content": KeeperManager.resolve_action_from_store(category, ".md", current_app, project_name, version)})
     KeeperManager.commit_files(project_id, release_branch, "Commit files about release: %s" %(version_info,), actions, current_app)
     return "Successful released version: %s to project: %s with action: %s" %(version, project_name, action)
