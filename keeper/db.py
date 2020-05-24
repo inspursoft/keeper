@@ -199,7 +199,7 @@ def get_ip_provison_dead_lock(project_id):
 		'''select ir.ip_provision_id, ir.pipeline_id, ip.ip_address from ip_runner ir
           left join ip_provision ip on ip.id = ir.ip_provision_id
           where ir.project_id = ? and ir.is_canceled = 2 and ir.is_power_on = 1
-		'''
+		''',(project_id,)
 	).fetchone()
 
 def proxied_execute(app, sql, *data):
