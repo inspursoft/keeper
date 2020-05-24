@@ -585,6 +585,7 @@ class KeeperManager:
   def get_ip_provision(project_id, app):
     r = db.get_reserved_runner_by_project(project_id)
     if not r:
+      KeeperManager.release_dead_lock_ip_runner(project_id, app)
       ips = db.get_available_ip()
       if len(ips) == 0:
         raise KeeperException(404, "No IP provision found currently.")
@@ -618,6 +619,17 @@ class KeeperManager:
   @staticmethod
   def unregister_ip_runner(runner_id, app):
     db.remove_ip_runner(runner_id, app)
+
+  @staticmethod
+  def release_dead_lock_ip_runner(project_id, app):
+    r = db.get_ip_provison_dead_lock(project_id)
+    if r:
+      ip_provision_id = r["ip_provision_id"]
+      app.logger.debug("Pipeline: %d has dead locked and would be release...", r["pipeline_id"])
+      def t_callback():
+        db.remove_ip_runner(ip_provision_id, app)
+        db.update_ip_provision_by_id(ip_provision_id, 0, app)
+      db.DBT.execute(app, t_callback)
 
   power_on_init = 0
   powering_on = 1
