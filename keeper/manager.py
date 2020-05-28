@@ -283,8 +283,6 @@ class KeeperManager:
         contents += "|" + key + "|" + store[key] + "|\n"
       elif file_type == ".sh":
         contents += key + "=" + '"{}"'.format(store[key]) + "\n"
-    if file_type == ".sh":
-      versions = KeeperManager.get_versions_by_project_name(project_name, app)
     app.logger.debug("Generated contents with file type: %s, content: %s", file_type, contents)
     return contents
 
@@ -963,7 +961,7 @@ class KeeperManager:
   def get_evaluation(category, app):
     r = db.get_evaluation(category, app)
     if not r:
-      raise KeeperException(404, "None of evaluation for category: %s", category)
+      raise KeeperException(404, "None of evaluation for category: %s" % (category,))
     return Evaluation(r["category"], r["standard"], r["level"], r["suggestion"])
 
   @staticmethod
