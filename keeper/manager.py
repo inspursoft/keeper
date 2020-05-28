@@ -363,10 +363,13 @@ class KeeperManager:
     return KeeperManager.request_gitlab_api(username, request_url, app, by_principle="username", params = {"note": message})
 
   @staticmethod
-  def post_issue_to_assignee(project_id, title, description, label, assignee, app):
-    app.logger.debug("Post issue to project ID: %d with title: %s, label: %s, description: %s ", project_id, title, description, label)
-    user = KeeperManager.resolve_user(assignee, app)
-    request_url = "%s/projects/%d/issues?title=%s&description=%s&labels=%s&assignee_ids=%d" % (KeeperManager.get_gitlab_api_url(), project_id, title, description, label, user.user_id)
+  def post_issue_to_assignee(project_id, title, description, label, assignee_name, app):
+    app.logger.debug("Post issue to project ID: %d with title: %s, description: %s, label: %s", project_id, title, description, label)
+    assignee_id = ""
+    if len(assignee_name) > 0:
+      assignee = KeeperManager.resolve_user(assignee_name, app)
+      assignee_id = str(assignee.user_id)
+    request_url = "%s/projects/%d/issues?title=%s&description=%s&labels=%s&assignee_ids=%s" % (KeeperManager.get_gitlab_api_url(), project_id, title, description, label, assignee_id)
     return KeeperManager.request_gitlab_api(project_id, request_url, app)
 
   @staticmethod

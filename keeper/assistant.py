@@ -243,8 +243,6 @@ def resolve_pipeline_failed_jobs():
     return abort(400, "Base project name is required.")
   if base_project_name.find("/") == -1:
     return abort(400, "Illegal format of base project name: %s", base_project_name)
-  base_username = base_project_name[:base_project_name.index("/")]
-  current_app.logger.debug("Resolve base user name: %s from project name: %s", base_username, base_project_name)
   pipeline_project_id = request.args.get("pipeline_project_id", None)
   if not pipeline_project_id:
     return abort(400, "Pipeline Project ID is required.")
@@ -262,17 +260,18 @@ def resolve_pipeline_failed_jobs():
       current_app.logger.debug("No matched with judgement rule for DevOps issue of characters, will open issue to developer as assignee...")
     else:
       assignee_info = {
-        "assignee": base_username,
         "pipeline_id": pipeline_id,
         "title": "DevOps issue for pipeline %d" % (int(pipeline_id),),
         "description": "Pipeline was failed caused by DevOps issue.",
       }
+    base_username = base_project_name[:base_project_name.index("/")]
+    current_app.logger.debug("Resolved username: %s from base project name: %s", base_username, base_project_name)
     open_issue_url = urljoin("http://localhost:5000", url_for("integration.issue_assign", username=base_username, project_name=base_project_name))
     current = current_app._get_current_object()
     def callback():
       issue_title = assignee_info["title"]
       issue_description = assignee_info["description"]
-      resp = requests.post(open_issue_url, json={"assignee": assignee_info["assignee"], "title": issue_title, "description": issue_description, "label": ",".join([issue_label, "todo"])})
+      resp = requests.post(open_issue_url, json={"title": issue_title, "description": issue_description, "label": ",".join([issue_label, "todo"])})
       current.logger.debug("Requested URL: %s with status code: %d, response text: %s" % (open_issue_url, resp.status_code, resp.text))
     threading.Thread(target=callback).start()
     return jsonify(message="Successful resolved pipeline failed jobs.")

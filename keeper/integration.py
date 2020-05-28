@@ -32,7 +32,7 @@ def issue_assign():
   if "title" not in data:
     return abort(400, "Issue title is required.")
   if "assignee" not in data:
-    return abort(400, "Issue assignee is required.")
+    data['assignee'] = ""
   if "description" not in data:
     data["description"] = "As title."
   if "label" not in data:
