@@ -80,7 +80,6 @@ class KeeperManager:
     SSHUtil.exec_script(self.current, "cp -R %s %s" % (get_info("VM_SRC_PATH"), remote_dest_path))
     SSHUtil.secure_copyfile(self.current, local_vagrantfile_path, remote_dest_path)
     
-  
   def __base_vagrant_operation(self, *operation):
     vm_path = os.path.join(get_info("VM_DEST_PATH"), self.vm_name)
     return SSHUtil.exec_script(self.current, "cd %s && PATH=/usr/local/bin:$PATH vagrant" % vm_path, *operation)
@@ -942,16 +941,24 @@ class KeeperManager:
       judgement = KeeperManager.get_job_log_judgement(rule_name, app)
       try:
         p = re.compile(judgement.rule, re.M)
-        if re.search(p, job_log.trace):
-          app.logger.debug("Bypass for DevOps issue as matched job log by rule: %s with characters: %s", rule_name, judgement.rule)
-          continue # Passed for issue with DevOps.
         payload = {
           "assignee": job_log.username,
           "job_name": job_log.job_name,
           "pipeline_id": job_log.pipeline_id,
+          "stage": job_log.stage
         }
-        app.logger.debug("Return for user: %s issue as it does not matched job log by reserved judgement.", payload["assignee"])
-        return True, payload  # Return matched flag for openning issue to assignee.
+        m = re.search(p, job_log.trace)
+        if m:
+          span_begin = m.span()[0]
+          start = span_begin - 500
+          if start < 0:
+            start = span_begin
+          span_end = m.span()[1]
+          payload["matches"] = job_log.trace[start:span_end]
+          app.logger.debug("Return for user: %s issue as it does not matched job log by reserved judgement.", payload["assignee"])
+          return True, payload  # Return matched flag for openning issue to assignee.
+        app.logger.debug("Bypass for DevOps issue as matched job log by rule: %s with characters: %s", rule_name, judgement.rule)
+        return False, payload
       except Exception as e:
         app.logger.error("Failed to match job log by reserved judgement: %s", e)
         raise KeeperException(400, e)

@@ -253,16 +253,17 @@ def resolve_pipeline_failed_jobs():
     pipeline_logs = KeeperManager.get_pipeline_failed_jobs(int(pipeline_project_id), int(pipeline_id), current_app)
     issue_label = "devops"
     matched, assignee_info = KeeperManager.match_job_log_by_judgement(pipeline_logs, current_app)
+    project_url = "%s/%s" % (get_info("GITLAB_URL"), base_project_name)
     if matched:
       issue_label = "issue"
-      assignee_info["title"] = "Issue for pipeline: %d" % (assignee_info["pipeline_id"],)
-      assignee_info["description"] = "There was some error occurred when executing pipeline: %d for job: %s that might be caused by your misconfiguration or code." % (assignee_info["pipeline_id"], assignee_info["job_name"])
+      assignee_info["title"] = quote("Issue for pipeline: %d" % (assignee_info["pipeline_id"],), safe="")
+      assignee_info["description"] = quote("There was some error occurred when executing pipeline: [%d](%s/pipelines/%d) for job: **%s** at stage: **%s**, for content:\n```\n%s\n```" % (assignee_info["pipeline_id"], project_url, assignee_info["pipeline_id"], assignee_info["job_name"], assignee_info["stage"], assignee_info["matches"]), safe="")
       current_app.logger.debug("No matched with judgement rule for DevOps issue of characters, will open issue to developer as assignee...")
     else:
       assignee_info = {
         "pipeline_id": pipeline_id,
-        "title": "DevOps issue for pipeline %d" % (int(pipeline_id),),
-        "description": "Pipeline was failed caused by DevOps issue.",
+        "title": quote("DevOps issue for pipeline: %d"% (int(pipeline_id),), safe=""),
+        "description": quote("Pipeline was failed caused by DevOps issue for pipeline [%d](%s/pipelines/%d) for job: **%s** at stage: **%s**, for content:\n```\n%s\n```"  % (assignee_info["pipeline_id"], project_url, assignee_info["pipeline_id"], assignee_info["job_name"], assignee_info["stage"], assignee_info["matches"]), safe="")
       }
     base_username = base_project_name[:base_project_name.index("/")]
     current_app.logger.debug("Resolved username: %s from base project name: %s", base_username, base_project_name)
