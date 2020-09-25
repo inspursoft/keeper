@@ -87,10 +87,14 @@ class KeeperManager:
   def create_vm(self):
     return self.__base_vagrant_operation("up")
 
+  def get_status(self):
+    return self.__base_vagrant_operation("status")
+
   def get_global_status(self):
     return self.__base_vagrant_operation("global-status")
 
   def get_vm_info(self):
+    self.get_status()
     raw_output = self.get_global_status()
     vm_global_status = VMGlobalStatus.parse(raw_output, self.vm_name)
     if vm_global_status is None:
