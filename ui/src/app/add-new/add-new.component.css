@@ -1,0 +1,15 @@
+clr-icon.add{
+  height: 18px;
+  width: 18px;
+  color: darkgreen;
+}
+
+clr-icon.add:hover{
+  cursor: pointer;
+  height: 20px;
+  width: 20px;
+
+  /*border-bottom: none;*/
+  border: none;
+  border-top: none;
+}

@@ -1,0 +1,15 @@
+<clr-modal [(clrModalOpen)]="modalOpened" [clrModalClosable]="false">
+  <h3 class="modal-title">Stage editor</h3>
+  <div class="modal-body">
+    <lib-input-ex [inputLabel]="'Job name'"
+                  [inputIsRequired]="true"
+                  [inputDefaultValue]="name"
+                  [validatorMessage]="[{key:'required', message:'Please input the stage name.'}]"
+                  (commitEvent)="name = $event">
+    </lib-input-ex>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" (click)="cancel()">Cancel</button>
+    <button class="btn btn-primary" (click)="save()">Save</button>
+  </div>
+</clr-modal>

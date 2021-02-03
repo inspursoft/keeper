@@ -1,0 +1,47 @@
+<ng-template #messageContainer></ng-template>
+<clr-main-container>
+  <header class="header header-2" style="display: flex;align-items: center">
+    <img style="height: 40px;margin:0 30px;" src="../assets/images/logo.png">
+    <div class="header-nav">
+      <a href="javascript://" class="active nav-link nav-text">Dashboard</a>
+    </div>
+  </header>
+  <div class="content-container">
+    <!--    <nav class="sidenav">-->
+    <!--      <section class="sidenav-content">-->
+    <!--        <a href="javascript:void(0)" class="nav-link active">-->
+    <!--          Nav Element 1-->
+    <!--        </a>-->
+    <!--        <section class="nav-group">-->
+    <!--          <input id="tabexample2" type="checkbox">-->
+    <!--          <label for="tabexample2">Default Nav Element</label>-->
+    <!--          <ul class="nav-list">-->
+    <!--            <li><a class="nav-link">Link 1</a></li>-->
+    <!--          </ul>-->
+    <!--        </section>-->
+    <!--      </section>-->
+    <!--    </nav>-->
+    <div class="content-area">
+      <div style="display: flex;margin-bottom: 10px;align-items: center">
+        <b>Project:</b>
+        <lib-dropdown-ex [dropdownItems]="projectList"
+                         (dropdownChangeItem)="getServerYamlFile($event)">
+        </lib-dropdown-ex>
+      </div>
+      <button class="btn-success" (click)="send()">Send</button>
+      <button class="btn-success" (click)="preview()">Preview</button>
+      <input type="file"
+             class="upload-file-input"
+             [disabled]="false"
+             (change)="parseLocateYamlFile($event)"
+             accept="*.*">
+      <div #canvasContainer style="height: 300px;border: 1px solid #c1c1c1;position: relative; box-shadow: #e5e5e5">
+        <canvas [height]="canvasHeight" [width]="canvasWidth" #backCanvas style="position: absolute;"></canvas>
+        <ng-template #componentsContainer></ng-template>
+      </div>
+    </div>
+  </div>
+</clr-main-container>
+
+
+

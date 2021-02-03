@@ -1,0 +1,23 @@
+<clr-modal [(clrModalOpen)]="opened" [clrModalClosable]="false">
+  <h3 class="modal-title">{{curMessage.title }}</h3>
+  <div class="modal-body">
+    <p>{{ curMessage.message }}</p>
+  </div>
+  <div class="modal-footer" [ngSwitch]="curMessage.buttonStyle">
+    <ng-template [ngSwitchCase]="1">
+      <button type="button" class="btn btn-outline" (click)="cancel()">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="confirm()">Confirm</button>
+    </ng-template>
+    <ng-template [ngSwitchCase]="2">
+      <button type="button" class="btn btn-outline" (click)="cancel()">Cancel</button>
+      <button type="button" class="btn btn-danger" (click)="confirm()">Delete</button>
+    </ng-template>
+    <ng-template [ngSwitchCase]="3">
+      <button type="button" class="btn btn-outline" (click)="cancel()">No</button>
+      <button type="button" class="btn btn-primary" (click)="confirm()">Yes</button>
+    </ng-template>
+    <ng-template [ngSwitchCase]="4">
+      <button type="button" class="btn btn-primary" (click)="confirm()">Confirm</button>
+    </ng-template>
+  </div>
+</clr-modal>

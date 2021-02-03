@@ -1,0 +1,18 @@
+<div class="job-container">
+  <clr-icon shape="success-standard"></clr-icon>
+  <span>{{job.name}}</span>
+  <a href="javascript: void(0)" (click)="editJob()">
+    <clr-icon class="delete"
+              shape="note"
+              style="height: 16px;width: 16px;"
+              [style.color]="isShowIcons? '#1aaa55' : 'transparent'">
+    </clr-icon>
+  </a>
+  <a href="javascript: void(0)" (click)="emitDeleteJob()">
+    <clr-icon class="delete"
+              shape="trash"
+              style="height: 16px;width: 16px;"
+              [style.color]="isShowIcons? '#1aaa55' : 'transparent'">
+    </clr-icon>
+  </a>
+</div>
