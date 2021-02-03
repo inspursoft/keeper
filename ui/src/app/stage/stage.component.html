@@ -1,0 +1,21 @@
+<a href="javascript:void(0)" (click)="emitChangePosition(false)">
+  <clr-icon shape="angle"
+            class="arrows back"
+            [style.color]="getArrowsColor(true)">
+  </clr-icon>
+</a>
+<span style="font-size: 16px; color: #858585;"><b>{{name}}</b></span>
+<a href="javascript:void(0)" (click)="emitChangePosition(true)">
+  <clr-icon shape="angle"
+            class="arrows forward"
+            [style.color]="getArrowsColor(false)">
+  </clr-icon>
+</a>
+<a href="javascript:void(0)" (click)="emitDeleteStage()">
+  <clr-icon class="delete"
+            shape="trash"
+            style="height: 16px;width: 16px;"
+            [style.color]="isShowIcons? '#1aaa55' : 'transparent'">
+  </clr-icon>
+</a>
+

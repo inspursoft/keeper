@@ -1,0 +1,9 @@
+<clr-modal [(clrModalOpen)]="modalOpened" [clrModalSize]="'lg'" [clrModalClosable]="false">
+  <h3 class="modal-title"><b>Preview</b></h3>
+  <div class="modal-body">
+    <div id="compile-editor" class="editor"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-primary" (click)="modalOpened = false">Ok</button>
+  </div>
+</clr-modal>

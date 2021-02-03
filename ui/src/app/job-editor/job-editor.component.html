@@ -1,0 +1,16 @@
+<clr-modal [(clrModalOpen)]="modalOpened" [clrModalSize]="'lg'" [clrModalClosable]="false">
+  <h3 class="modal-title">Job editor-->Stage:<b>{{job.stage}}</b></h3>
+  <div class="modal-body" #alertView>
+    <lib-input-ex [inputLabel]="'Job name'"
+                  [inputIsRequired]="true"
+                  [inputDefaultValue]="job.name"
+                  [validatorMessage]="[{key:'required', message:'Please input the job name.'}]"
+                  (commitEvent)="job.name = $event">
+    </lib-input-ex>
+    <div id="compile-editor" class="editor"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" (click)="cancel()">Cancel</button>
+    <button class="btn btn-primary" (click)="save()">Save</button>
+  </div>
+</clr-modal>

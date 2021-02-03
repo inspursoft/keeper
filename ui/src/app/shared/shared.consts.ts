@@ -1,0 +1,1 @@
+export const DISMISS_ALERT_INTERVAL = 4;

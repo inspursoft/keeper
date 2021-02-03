@@ -1,0 +1,18 @@
+<clr-alert [clrAlertType]="curMessage.alertType"
+           [clrAlertAppLevel]="true"
+           [clrAlertClosed]="!isOpen"
+           (clrAlertClosedChange)="isOpen = false">
+  <clr-alert-item>
+    <span class="alert-text">{{curMessage.message}}{{curMessage.endMessage}}</span>
+    <div class="alert-actions" *ngIf="curMessage.type == 1 || curMessage.type == 2">
+      <clr-icon *ngIf="curMessage.type == 1 " shape="ellipsis-vertical" (click)="detailModalOpen = true"></clr-icon>
+    </div>
+  </clr-alert-item>
+</clr-alert>
+<clr-modal [(clrModalOpen)]="detailModalOpen" [clrModalSize]="'md'">
+  <h3 class="modal-title">Detail</h3>
+  <div class="modal-body"><p>{{errorDetailMsg}}{{curMessage.endMessage}}</p></div>
+  <div class="modal-footer">
+    <button class="btn" (click)="detailModalOpen = false">Ok</button>
+  </div>
+</clr-modal>

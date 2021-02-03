@@ -1,0 +1,33 @@
+clr-icon.arrows{
+  height: 18px;
+  width: 18px;
+}
+
+clr-icon.arrows:hover{
+  cursor: pointer;
+  height: 20px;
+  width: 20px;
+}
+
+clr-icon.arrows.forward {
+  transform: rotate(90deg);
+  -ms-transform: rotate(90deg);
+  -webkit-transform: rotate(90deg);
+}
+
+clr-icon.arrows.back {
+  transform: rotate(-90deg);
+  -ms-transform: rotate(-90deg);
+  -webkit-transform: rotate(-90deg);
+}
+
+clr-icon.delete{
+  height: 18px;
+  width: 18px;
+}
+
+clr-icon.delete:hover{
+  cursor: pointer;
+  height: 20px;
+  width: 20px;
+}

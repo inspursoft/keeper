@@ -1,0 +1,29 @@
+div.job-container {
+  padding: 8px 10px 9px;
+  border: 1px solid #e5e5e5;
+  border-radius: 30px;
+  background-color: #fff;
+  width: 186px;
+  margin-bottom: 10px;
+  white-space: normal;
+  display: flex;
+}
+
+div.job-container:hover {
+  background-color: #eaf3fc;
+  cursor: pointer;
+}
+
+div.job-container clr-icon {
+  color: #1aaa55;
+  height: 26.5px;
+  width: 26.5px;
+}
+
+div.job-container span {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  width: 150px;
+  display: inline-block;
+}
